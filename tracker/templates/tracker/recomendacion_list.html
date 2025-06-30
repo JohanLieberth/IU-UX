@@ -1,0 +1,30 @@
+{% extends "tracker/base.html" %}
+
+{% block title %}Lista de Recomendaciones{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Recomendaciones</h1>
+    <a href="{% url 'tracker:recomendacion_create' %}" class="btn btn-primary">Nueva Recomendación</a>
+</div>
+
+{% if recomendaciones %}
+    <div class="list-group">
+        {% for recomendacion in recomendaciones %}
+            <a href="{% url 'tracker:recomendacion_detail' recomendacion.pk %}" class="list-group-item list-group-item-action flex-column align-items-start">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">{{ recomendacion.titulo }}</h5>
+                    <small class="text-muted">Actualizado: {{ recomendacion.fecha_actualizacion|date:"d/m/Y H:i" }}</small>
+                </div>
+                <p class="mb-1">{{ recomendacion.descripcion|truncatewords:30 }}</p>
+                <small>Estado: <span class="badge bg-{% if recomendacion.estado == 'pendiente' %}warning{% elif recomendacion.estado == 'en_progreso' %}info{% elif recomendacion.estado == 'completada' %}success{% elif recomendacion.estado == 'cancelada' %}danger{% else %}secondary{% endif %}">{{ recomendacion.get_estado_display }}</span></small>
+                <small class="ms-2">Creado por: {{ recomendacion.creado_por.username|default:"N/A" }} el {{ recomendacion.fecha_creacion|date:"d/m/Y" }}</small>
+            </a>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info" role="alert">
+        No hay recomendaciones registradas todavía. ¡Crea la primera!
+    </div>
+{% endif %}
+{% endblock %}

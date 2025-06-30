@@ -1,0 +1,64 @@
+{% extends "tracker/base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 offset-md-3">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Iniciar Sesión</h3>
+            </div>
+            <div class="card-body">
+                {% if form.errors %}
+                    <div class="alert alert-danger">
+                        Por favor, corrige los errores abajo. Tu nombre de usuario y contraseña no coincidieron.
+                    </div>
+                {% endif %}
+
+                {% if next %}
+                    {% if user.is_authenticated %}
+                    <div class="alert alert-warning">
+                        Tu cuenta no tiene acceso a esta página. Para proceder,
+                        por favor inicia sesión con una cuenta que tenga acceso.
+                    </div>
+                    {% else %}
+                    <!-- <p>Por favor, inicia sesión para ver esta página.</p> -->
+                    {% endif %}
+                {% endif %}
+
+                <form method="post" action="{% url 'admin:login' %}"> <!-- Usando el login de admin por simplicidad -->
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.username.id_for_label }}" class="form-label">{{ form.username.label }}</label>
+                        {% render_field form.username class="form-control" placeholder="Nombre de usuario" %}
+                        {% for error in form.username.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.password.id_for_label }}" class="form-label">{{ form.password.label }}</label>
+                        {% render_field form.password class="form-control" placeholder="Contraseña" %}
+                        {% for error in form.password.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <input type="hidden" name="next" value="{{ next|default:'/' }}">
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                <p class="mb-0">¿No tienes una cuenta? Contacta al administrador.</p>
+                {# <a href="{% url 'password_reset' %}">¿Olvidaste tu contraseña?</a> #}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

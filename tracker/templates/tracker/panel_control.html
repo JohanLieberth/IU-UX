@@ -1,0 +1,123 @@
+{% extends "tracker/base.html" %}
+
+{% block title %}Panel de Control{% endblock %}
+
+{% block content %}
+<div class="pb-2 mb-3 border-bottom">
+    <h1>Panel de Control</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-header">Total de Recomendaciones</div>
+            <div class="card-body">
+                <h5 class="card-title display-4">{{ num_recomendaciones_total }}</h5>
+                <p class="card-text">Número total de recomendaciones registradas en el sistema.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-dark bg-warning mb-3">
+            <div class="card-header">Pendientes</div>
+            <div class="card-body">
+                <h5 class="card-title display-4">{{ num_pendientes }}</h5>
+                <p class="card-text">Recomendaciones que aún no han comenzado.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-info mb-3">
+            <div class="card-header">En Progreso</div>
+            <div class="card-body">
+                <h5 class="card-title display-4">{{ num_en_progreso }}</h5>
+                <p class="card-text">Recomendaciones que se están trabajando actualmente.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-header">Completadas</div>
+            <div class="card-body">
+                <h5 class="card-title display-4">{{ num_completadas }}</h5>
+                <p class="card-text">Recomendaciones que han sido finalizadas exitosamente.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <p><em>Este panel de control es una vista simplificada. Se pueden añadir más gráficos y estadísticas detalladas.</em></p>
+    <ul>
+        <li>Gráficos de progreso por responsable.</li>
+        <li>Tareas vencidas o próximas a vencer.</li>
+        <li>Actividad reciente.</li>
+    </ul>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <h4>Tareas Vencidas (No completadas)</h4>
+        {% if tareas_vencidas %}
+            <ul class="list-group">
+                {% for tarea in tareas_vencidas %}
+                    <li class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center">
+                        <div>
+                            <a href="{% url 'tracker:recomendacion_detail' tarea.recomendacion.pk %}#tarea-{{tarea.pk}}">{{ tarea.descripcion }}</a>
+                            <small class="d-block text-muted">Recomendación: {{ tarea.recomendacion.titulo|truncatewords:5 }}</small>
+                        </div>
+                        <span class="badge bg-danger rounded-pill">Vence: {{ tarea.fecha_limite|date:"d/m/Y" }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-success">¡No hay tareas vencidas!</p>
+        {% endif %}
+    </div>
+    <div class="col-md-6">
+        <h4>Tareas Próximas a Vencer (Próximos 7 días, no completadas)</h4>
+        {% if tareas_proximas_vencer %}
+            <ul class="list-group">
+                {% for tarea in tareas_proximas_vencer %}
+                    <li class="list-group-item list-group-item-warning d-flex justify-content-between align-items-center">
+                         <div>
+                            <a href="{% url 'tracker:recomendacion_detail' tarea.recomendacion.pk %}#tarea-{{tarea.pk}}">{{ tarea.descripcion }}</a>
+                            <small class="d-block text-muted">Recomendación: {{ tarea.recomendacion.titulo|truncatewords:5 }}</small>
+                        </div>
+                        <span class="badge bg-warning text-dark rounded-pill">Vence: {{ tarea.fecha_limite|date:"d/m/Y" }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No hay tareas próximas a vencer en los siguientes 7 días.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <h4>Actividad Reciente</h4>
+        {% if actividad_reciente %}
+            <ul class="list-group">
+                {% for item in actividad_reciente %}
+                    <li class="list-group-item">
+                        <small>{{ item.fecha_hora|date:"d/m/Y H:i" }} - <strong>{{ item.get_accion_display }}</strong> por {{ item.usuario.username|default:"Sistema" }}</small>
+                        {% if item.recomendacion %}
+                            <small class="d-block text-muted">
+                                Recomendación: <a href="{% url 'tracker:recomendacion_detail' item.recomendacion.pk %}">{{ item.recomendacion.titulo|truncatewords:10 }}</a>
+                            </small>
+                        {% endif %}
+                        {% if item.detalles %}<p class="mb-0 ms-2 fst-italic">{{ item.detalles|truncatewords:20 }}</p>{% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No hay actividad reciente.</p>
+        {% endif %}
+    </div>
+</div>
+
+
+<a href="{% url 'tracker:recomendacion_list' %}" class="btn btn-secondary mt-4">Volver a la Lista de Recomendaciones</a>
+
+{% endblock %}

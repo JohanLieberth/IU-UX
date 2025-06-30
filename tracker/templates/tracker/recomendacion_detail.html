@@ -1,0 +1,226 @@
+{% extends "tracker/base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Detalle: {{ recomendacion.titulo }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .card-subsection { margin-top: 20px; }
+    .evidencia-item, .comentario-item, .historial-item {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+    }
+    .evidencia-item:last-child, .comentario-item:last-child, .historial-item:last-child {
+        border-bottom: none;
+    }
+    .form-inline-group { display: flex; gap: 10px; align-items: flex-end; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3>{{ recomendacion.titulo }}</h3>
+        <a href="{% url 'tracker:recomendacion_update' recomendacion.pk %}" class="btn btn-sm btn-outline-primary">Editar Recomendación</a>
+    </div>
+    <div class="card-body">
+        <p><strong>Descripción:</strong> {{ recomendacion.descripcion|linebreaksbr }}</p>
+        <p><strong>Estado:</strong> <span class="badge bg-{% if recomendacion.estado == 'pendiente' %}warning{% elif recomendacion.estado == 'en_progreso' %}info{% elif recomendacion.estado == 'completada' %}success{% elif recomendacion.estado == 'cancelada' %}danger{% else %}secondary{% endif %}">{{ recomendacion.get_estado_display }}</span></p>
+        <p><strong>Creado por:</strong> {{ recomendacion.creado_por.username|default:"N/A" }} el {{ recomendacion.fecha_creacion|date:"d/m/Y H:i" }}</p>
+        <p><strong>Última actualización:</strong> {{ recomendacion.fecha_actualizacion|date:"d/m/Y H:i" }}</p>
+    </div>
+</div>
+
+<!-- Tareas -->
+<div class="card card-subsection">
+    <div class="card-header">
+        <h4>Tareas Asociadas</h4>
+    </div>
+    <div class="card-body">
+        {% if tareas %}
+            <ul class="list-group list-group-flush">
+            {% for tarea in tareas %}
+                <li class="list-group-item" id="tarea-{{tarea.pk}}">
+                    <h5>{{ tarea.descripcion }}</h5>
+                    <p class="mb-1">
+                        Responsable: {{ tarea.responsable|default:"No asignado" }} <br>
+                        Fecha Límite: {{ tarea.fecha_limite|date:"d/m/Y"|default:"No definida" }} <br>
+                        Estado: <span class="badge bg-secondary">{{ tarea.get_estado_display }}</span>
+                    </p>
+                    <small>Creada: {{ tarea.fecha_creacion|date:"d/m/Y H:i" }}</small>
+                    <!-- Aquí podríamos añadir opciones para editar tarea, marcar como completada, etc. -->
+                    <!-- Y un mini-formulario para subir evidencia específica a esta tarea -->
+                    <div class="mt-2">
+                         <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#evidenciaFormTarea{{tarea.pk}}" aria-expanded="false" aria-controls="evidenciaFormTarea{{tarea.pk}}">
+                            Adjuntar Evidencia a Tarea
+                        </button>
+                        <div class="collapse mt-2" id="evidenciaFormTarea{{tarea.pk}}">
+                            <form method="post" action="{% url 'tracker:subir_evidencia_tarea' recomendacion.pk tarea.pk %}" enctype="multipart/form-data" class="form-inline-group">
+                                {% csrf_token %}
+                                {% render_field evidencia_form.descripcion class="form-control form-control-sm" placeholder="Descripción (opcional)" %}
+                                {% render_field evidencia_form.archivo class="form-control form-control-sm" %}
+                                <button type="submit" class="btn btn-sm btn-primary">Subir</button>
+                            </form>
+                        </div>
+                    </div>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>No hay tareas asignadas a esta recomendación.</p>
+        {% endif %}
+    </div>
+    <div class="card-footer">
+        <h5>Añadir Nueva Tarea</h5>
+        <form method="post" action="{% url 'tracker:agregar_tarea' recomendacion.pk %}">
+            {% csrf_token %}
+            <!-- Renderizado con widget_tweaks para el formulario de tarea -->
+            <div class="mb-2">
+                {% render_field tarea_form.descripcion class="form-control" placeholder="Descripción de la nueva tarea" %}
+            </div>
+            <div class="row gx-2">
+                <div class="col-md-4 mb-2">
+                    {% render_field tarea_form.responsable class="form-select" %}
+                </div>
+                <div class="col-md-4 mb-2">
+                    {% render_field tarea_form.fecha_limite class="form-control" %}
+                </div>
+                <div class="col-md-3 mb-2">
+                    {% render_field tarea_form.estado class="form-select" %}
+                </div>
+                <div class="col-md-1 mb-2 d-grid">
+                    <button type="submit" class="btn btn-success">Añadir</button>
+                </div>
+            </div>
+            {% for field_name, errors in tarea_form.errors.items %}
+                {% for error in errors %}
+                <div class="text-danger"><small>{{ tarea_form|field_name }}: {{ error }}</small></div>
+                {% endfor %}
+            {% endfor %}
+        </form>
+    </div>
+</div>
+
+
+<!-- Evidencias Generales de la Recomendación -->
+<div class="card card-subsection">
+    <div class="card-header">
+        <h4>Evidencias de la Recomendación</h4>
+    </div>
+    <div class="card-body">
+        {% if evidencias %}
+            <ul class="list-group list-group-flush">
+            {% for evidencia in evidencias %}
+                 {% if not evidencia.tarea %} {# Mostrar solo evidencias de la recomendación, no de tareas específicas #}
+                <li class="list-group-item evidencia-item">
+                    <p class="mb-1">
+                        {% if evidencia.archivo %}
+                            <a href="{{ evidencia.archivo.url }}" target="_blank">{{ evidencia.archivo.name|cut:"evidencias/recomendacion_"|cut:recomendacion.id|cut:"/" }}</a>
+                        {% else %}
+                            Sin archivo adjunto
+                        {% endif %}
+                        {% if evidencia.descripcion %}({{ evidencia.descripcion }}){% endif %}
+                    </p>
+                    <small class="text-muted">Subido por: {{ evidencia.subido_por.username|default:"N/A" }} el {{ evidencia.fecha_subida|date:"d/m/Y H:i" }}</small>
+                    {% if evidencia.tarea %}
+                        <br><small class="text-muted">Asociado a tarea: {{ evidencia.tarea.descripcion|truncatewords:10 }}</small>
+                    {% endif %}
+                </li>
+                {% endif %}
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>No hay evidencias generales adjuntas a esta recomendación.</p>
+        {% endif %}
+    </div>
+    <div class="card-footer">
+        <h5>Adjuntar Evidencia a la Recomendación</h5>
+        <form method="post" action="{% url 'tracker:subir_evidencia_recomendacion' recomendacion.pk %}" enctype="multipart/form-data" class="form-inline-group">
+            {% csrf_token %}
+            <div class="flex-grow-1">
+                {% render_field evidencia_form.descripcion class="form-control form-control-sm" placeholder="Descripción (opcional)" %}
+            </div>
+            <div>
+                {% render_field evidencia_form.archivo class="form-control form-control-sm" %}
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Subir Evidencia</button>
+            {% for field_name, errors in evidencia_form.errors.items %}
+                {% for error in errors %}
+                <div class="text-danger"><small>{{ evidencia_form|field_name }}: {{ error }}</small></div>
+                {% endfor %}
+            {% endfor %}
+        </form>
+    </div>
+</div>
+
+<!-- Comentarios -->
+<div class="card card-subsection">
+    <div class="card-header">
+        <h4>Comentarios</h4>
+    </div>
+    <div class="card-body">
+        {% if comentarios %}
+            {% for comentario in comentarios %}
+            <div class="comentario-item mb-2">
+                <strong>{{ comentario.autor.username }}</strong> <small class="text-muted">({{ comentario.fecha_creacion|date:"d/m/Y H:i" }})</small>:
+                <p class="ms-2 mb-0">{{ comentario.texto|linebreaksbr }}</p>
+                 {% if comentario.tarea %}
+                    <small class="ms-2 text-muted">Sobre tarea: {{ comentario.tarea.descripcion|truncatewords:10 }}</small>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>No hay comentarios todavía.</p>
+        {% endif %}
+    </div>
+    <div class="card-footer">
+        <h5>Añadir Comentario</h5>
+        <form method="post" action="{% url 'tracker:agregar_comentario_recomendacion' recomendacion.pk %}">
+            {% csrf_token %}
+             <div class="mb-2">
+                {% render_field comentario_form.texto class="form-control" rows="3" placeholder="Escribe tu comentario aquí..." %}
+            </div>
+            <button type="submit" class="btn btn-info">Añadir Comentario</button>
+            {% for field_name, errors in comentario_form.errors.items %}
+                {% for error in errors %}
+                <div class="text-danger"><small>{{ comentario_form|field_name }}: {{ error }}</small></div>
+                {% endfor %}
+            {% endfor %}
+        </form>
+    </div>
+</div>
+
+
+<!-- Historial de Actividad -->
+<div class="card card-subsection">
+    <div class="card-header">
+        <h4>Historial de Actividad</h4>
+    </div>
+    <div class="card-body">
+        {% if historial %}
+            <ul class="list-group list-group-flush">
+            {% for item in historial %}
+                <li class="list-group-item historial-item">
+                    <small>{{ item.fecha_hora|date:"d/m/Y H:i" }} - <strong>{{ item.get_accion_display }}</strong> por {{ item.usuario.username|default:"Sistema" }}</small>
+                    {% if item.detalles %}<p class="mb-0 ms-2 fst-italic">{{ item.detalles }}</p>{% endif %}
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>No hay historial de actividad para esta recomendación.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{% url 'tracker:recomendacion_list' %}" class="btn btn-secondary">Volver a la Lista</a>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+{% comment %}
+Ya no es necesario el script para añadir clases 'form-control' o 'form-select'
+gracias a django-widget-tweaks. El formulario de evidencia de tarea ya usa widget_tweaks.
+{% endcomment %}
+{% endblock %}
