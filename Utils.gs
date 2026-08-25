@@ -11,28 +11,41 @@ const SPREADSHEET_PROPERTY_KEY = 'MINUTAS_SPREADSHEET_ID';
 function getSpreadsheet() {
   const props = PropertiesService.getScriptProperties();
   let ssId = props.getProperty(SPREADSHEET_PROPERTY_KEY);
+  let ss = null;
 
   if (ssId) {
     try {
-      return SpreadsheetApp.openById(ssId);
+      ss = SpreadsheetApp.openById(ssId);
     } catch (e) {
       Logger.log('Hoja de cálculo no encontrada con ID guardado. Se creará una nueva.');
     }
   }
 
-  const newSs = SpreadsheetApp.create('DB_Sistema_Minutas_Seguimiento');
-  props.setProperty(SPREADSHEET_PROPERTY_KEY, newSs.getId());
-  setupDatabase(newSs);
-  return newSs;
+  if (!ss) {
+    ss = SpreadsheetApp.create('DB_Sistema_Minutas_Seguimiento');
+    props.setProperty(SPREADSHEET_PROPERTY_KEY, ss.getId());
+  }
+
+  setupDatabase(ss);
+  return ss;
 }
 
 /**
- * Inicializa la estructura de la base de datos con las pestañas requeridas.
+ * Inicializa la estructura de la base de datos asegurando que existan todas las pestañas y columnas.
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} [ss]
  */
 function setupDatabase(ss) {
   if (!ss) {
-    ss = getSpreadsheet();
+    const props = PropertiesService.getScriptProperties();
+    let ssId = props.getProperty(SPREADSHEET_PROPERTY_KEY);
+    if (ssId) {
+      try {
+        ss = SpreadsheetApp.openById(ssId);
+      } catch (e) {}
+    }
+    if (!ss) {
+      return getSpreadsheet();
+    }
   }
 
   const schema = {
@@ -47,6 +60,10 @@ function setupDatabase(ss) {
     let sheet = ss.getSheetByName(sheetName);
     if (!sheet) {
       sheet = ss.insertSheet(sheetName);
+    }
+
+    // Verificar si la pestaña está vacía o si le faltan los encabezados
+    if (sheet.getLastRow() === 0) {
       sheet.appendRow(schema[sheetName]);
       sheet.getRange(1, 1, 1, schema[sheetName].length).setFontWeight('bold').setBackground('#1e293b').setFontColor('#ffffff');
     }
