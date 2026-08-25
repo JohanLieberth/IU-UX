@@ -2,10 +2,6 @@
  * ProyectosService.gs - Servicio para operaciones CRUD de Proyectos.
  */
 
-/**
- * Obtiene la lista completa de proyectos.
- * @returns {string} JSON
- */
 function obtenerProyectos() {
   try {
     const proyectos = getSheetDataAsObjects('Proyectos');
@@ -15,11 +11,6 @@ function obtenerProyectos() {
   }
 }
 
-/**
- * Crea o actualiza un proyecto.
- * @param {Object} proyectoData
- * @returns {string} JSON
- */
 function guardarProyecto(proyectoData) {
   try {
     const ss = getSpreadsheet();
@@ -40,17 +31,13 @@ function guardarProyecto(proyectoData) {
     }
 
     if (isEdit) {
-      // Actualizar fila existente
       sheet.getRange(rowIndex, 2).setValue(proyectoData.nombre);
       sheet.getRange(rowIndex, 3).setValue(proyectoData.descripcion || '');
       sheet.getRange(rowIndex, 5).setValue(proyectoData.estado || 'Activo');
       return buildResponse(true, { id_proyecto: proyectoData.id_proyecto }, 'Proyecto actualizado exitosamente.');
     } else {
-      // Crear nuevo proyecto
       const newId = generateId();
       const fechaCreacion = formatDateISO(new Date());
-
-      // Crear carpeta en Drive para este proyecto
       const rootFolder = getOrCreateRootFolder();
       const projectFolder = rootFolder.createFolder(proyectoData.nombre + '_' + newId.substring(0, 8));
 
@@ -70,18 +57,12 @@ function guardarProyecto(proyectoData) {
   }
 }
 
-/**
- * Elimina un proyecto y valida si existen minutas vinculadas.
- * @param {string} idProyecto
- * @returns {string} JSON
- */
 function eliminarProyecto(idProyecto) {
   try {
-    // Validar si hay minutas asociadas
     const minutas = getSheetDataAsObjects('Minutas');
     const minutasAsociadas = minutas.filter(m => m.id_proyecto === idProyecto);
     if (minutasAsociadas.length > 0) {
-      return buildResponse(false, null, `No se puede eliminar el proyecto porque tiene ${minutasAsociadas.length} minuta(s) asociada(s).`);
+      return buildResponse(false, null, 'No se puede eliminar el proyecto porque tiene ' + minutasAsociadas.length + ' minuta(s) asociada(s).');
     }
 
     const ss = getSpreadsheet();

@@ -16,7 +16,7 @@ function doGet(e) {
 }
 
 /**
- * Incluye el contenido de archivos HTML secundarios (CSS/JS/Vistas) dentro del HTML principal.
+ * Incluye el contenido de archivos HTML secundarios dentro del HTML principal.
  * @param {string} filename
  * @returns {string}
  */
@@ -39,8 +39,8 @@ function getInitialData() {
       proyectos: proyectosRes.data || [],
       minutas: minutasRes.data || [],
       acuerdos: acuerdosRes.data || []
-    }, "Datos iniciales cargados con éxito");
+    }, 'Datos iniciales cargados con éxito');
   } catch (err) {
-    return buildResponse(false, null, "Error al cargar datos iniciales: " + err.toString());
+    return buildResponse(false, null, 'Error al cargar datos iniciales: ' + err.toString());
   }
 }

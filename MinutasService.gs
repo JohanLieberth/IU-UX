@@ -2,10 +2,6 @@
  * MinutasService.gs - Servicio para operaciones de Minutas, Asistencia, Orden del Día y Acuerdos.
  */
 
-/**
- * Obtiene todas las minutas registradas.
- * @returns {string} JSON
- */
 function obtenerMinutas() {
   try {
     const minutas = getSheetDataAsObjects('Minutas');
@@ -25,11 +21,6 @@ function obtenerMinutas() {
   }
 }
 
-/**
- * Obtiene los detalles completos de una minuta específica (asistencia, orden del día, acuerdos).
- * @param {string} idMinuta
- * @returns {string} JSON
- */
 function obtenerDetalleMinuta(idMinuta) {
   try {
     const minutas = getSheetDataAsObjects('Minutas');
@@ -43,7 +34,6 @@ function obtenerDetalleMinuta(idMinuta) {
     const ordenDelDia = getSheetDataAsObjects('OrdenDelDia').filter(o => o.id_minuta === idMinuta);
     const acuerdos = getSheetDataAsObjects('Acuerdos').filter(ac => ac.id_minuta === idMinuta);
 
-    // Calcular estado dinámico de acuerdos
     const acuerdosConEstado = acuerdos.map(ac => ({
       ...ac,
       estado_calculado: calcularEstadoAcuerdo(ac.fecha_cumplimiento, ac.estado)
@@ -60,11 +50,6 @@ function obtenerDetalleMinuta(idMinuta) {
   }
 }
 
-/**
- * Guarda o actualiza una minuta completa con sus relaciones (asistencia, orden del día, acuerdos).
- * @param {Object} payload
- * @returns {string} JSON
- */
 function guardarMinutaCompleta(payload) {
   try {
     const ss = getSpreadsheet();
@@ -86,7 +71,6 @@ function guardarMinutaCompleta(payload) {
     const fechaCreacion = isEdit ? minData.fecha_creacion : formatDateISO(new Date());
 
     if (isEdit) {
-      // Actualizar registro principal en Minutas
       const rows = minutasSheet.getDataRange().getValues();
       for (let i = 1; i < rows.length; i++) {
         if (rows[i][0] === idMinuta) {
@@ -98,11 +82,8 @@ function guardarMinutaCompleta(payload) {
           break;
         }
       }
-
-      // Limpiar relaciones anteriores
       limpiarRelacionesMinuta(idMinuta);
     } else {
-      // Insertar nuevo registro en Minutas
       minutasSheet.appendRow([
         idMinuta,
         minData.id_proyecto,
@@ -110,13 +91,12 @@ function guardarMinutaCompleta(payload) {
         formatDateISO(minData.fecha_reunion),
         minData.lugar || '',
         minData.objetivo || '',
-        '', // doc_url
-        '', // pdf_url
+        '',
+        '',
         fechaCreacion
       ]);
     }
 
-    // Insertar Lista de Asistencia
     if (Array.isArray(payload.asistencia)) {
       payload.asistencia.forEach((item, index) => {
         asistenciaSheet.appendRow([
@@ -132,7 +112,6 @@ function guardarMinutaCompleta(payload) {
       });
     }
 
-    // Insertar Orden del Día
     if (Array.isArray(payload.ordenDelDia)) {
       payload.ordenDelDia.forEach((item, index) => {
         ordenSheet.appendRow([
@@ -144,7 +123,6 @@ function guardarMinutaCompleta(payload) {
       });
     }
 
-    // Insertar Acuerdos
     if (Array.isArray(payload.acuerdos)) {
       payload.acuerdos.forEach((item, index) => {
         acuerdosSheet.appendRow([
@@ -166,16 +144,11 @@ function guardarMinutaCompleta(payload) {
   }
 }
 
-/**
- * Elimina los registros secundarios vinculados a una minuta.
- * @param {string} idMinuta
- */
 function limpiarRelacionesMinuta(idMinuta) {
   const ss = getSpreadsheet();
   ['Asistencia', 'OrdenDelDia', 'Acuerdos'].forEach(sheetName => {
     const sheet = ss.getSheetByName(sheetName);
     const data = sheet.getDataRange().getValues();
-    // Eliminar de abajo hacia arriba
     for (let i = data.length - 1; i >= 1; i--) {
       if (data[i][1] === idMinuta) {
         sheet.deleteRow(i + 1);
@@ -184,11 +157,6 @@ function limpiarRelacionesMinuta(idMinuta) {
   });
 }
 
-/**
- * Elimina una minuta completa con todas sus tablas asociadas.
- * @param {string} idMinuta
- * @returns {string} JSON
- */
 function eliminarMinuta(idMinuta) {
   try {
     const ss = getSpreadsheet();

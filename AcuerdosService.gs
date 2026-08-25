@@ -2,12 +2,6 @@
  * AcuerdosService.gs - Lógica de estados y seguimiento de acuerdos.
  */
 
-/**
- * Calcula el estado dinámico de un acuerdo según su fecha de cumplimiento y estado actual.
- * @param {string|Date} fechaCumplimiento
- * @param {string} estadoActual
- * @returns {string} Estado (Pendiente | Por vencer | Vencido | Atendido | Cancelado)
- */
 function calcularEstadoAcuerdo(fechaCumplimiento, estadoActual) {
   if (estadoActual === 'Atendido' || estadoActual === 'Cancelado') {
     return estadoActual;
@@ -39,10 +33,6 @@ function calcularEstadoAcuerdo(fechaCumplimiento, estadoActual) {
   }
 }
 
-/**
- * Obtiene todos los acuerdos cruzados con los nombres de Proyecto y Minuta.
- * @returns {string} JSON
- */
 function obtenerAcuerdosConEstado() {
   try {
     const acuerdos = getSheetDataAsObjects('Acuerdos');
@@ -75,14 +65,7 @@ function obtenerAcuerdosConEstado() {
   }
 }
 
-/**
- * Actualiza el estado de un acuerdo individual.
- * @param {string} idAcuerdo
- * @param {string} nuevoEstado
- * @param {string} [motivoCancelacion]
- * @returns {string} JSON
- */
-function actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivoCancelacion = '') {
+function actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivoCancelacion) {
   try {
     const ss = getSpreadsheet();
     const sheet = ss.getSheetByName('Acuerdos');

@@ -1,5 +1,4 @@
 <script>
-  // Variables Globales de Estado
   let APP_DATA = {
     proyectos: [],
     minutas: [],
@@ -9,16 +8,14 @@
   let dtProyectos = null;
   let dtMinutas = null;
   let dtSeguimiento = null;
+  let loadingTimeout = null;
 
-  // Al cargar el documento
-  document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('DOMContentLoaded', function() {
     refreshAppData();
   });
 
-  let loadingTimeout = null;
-
-  // Mostrar U Ocultar Spinner de Carga
-  function showLoading(show = true) {
+  function showLoading(show) {
+    if (show === undefined) show = true;
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) overlay.style.display = show ? 'flex' : 'none';
 
@@ -27,9 +24,8 @@
       loadingTimeout = null;
     }
 
-    // Seguridad: Si después de 15 segundos sigue cargando, ocultar overlay para desbloquear la UI
     if (show) {
-      loadingTimeout = setTimeout(() => {
+      loadingTimeout = setTimeout(function() {
         const ov = document.getElementById('loadingOverlay');
         if (ov && ov.style.display !== 'none') {
           ov.style.display = 'none';
@@ -39,8 +35,8 @@
     }
   }
 
-  // Notificaciones Toast (Bootstrap)
-  function showToast(message, isSuccess = true) {
+  function showToast(message, isSuccess) {
+    if (isSuccess === undefined) isSuccess = true;
     const toastContainer = document.getElementById('toastContainer');
     if (!toastContainer) return;
 
@@ -48,31 +44,29 @@
     const bgClass = isSuccess ? 'bg-success text-white' : 'bg-danger text-white';
     const icon = isSuccess ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
 
-    const html = `
-      <div id="${toastId}" class="toast align-items-center ${bgClass} border-0 mb-2 shadow" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-          <div class="toast-body d-flex align-items-center gap-2">
-            <i class="bi ${icon} fs-5"></i>
-            <div>${message}</div>
-          </div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-      </div>
-    `;
+    const html = '<div id="' + toastId + '" class="toast align-items-center ' + bgClass + ' border-0 mb-2 shadow" role="alert" aria-live="assertive" aria-atomic="true">' +
+      '<div class="d-flex">' +
+        '<div class="toast-body d-flex align-items-center gap-2">' +
+          '<i class="bi ' + icon + ' fs-5"></i>' +
+          '<div>' + escapeHtml(message) + '</div>' +
+        '</div>' +
+        '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
+      '</div>' +
+    '</div>';
 
     toastContainer.insertAdjacentHTML('beforeend', html);
     const toastEl = document.getElementById(toastId);
-    const bsToast = new bootstrap.Toast(toastEl, { delay: 4000 });
-    bsToast.show();
-    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    if (toastEl && typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+      const bsToast = new bootstrap.Toast(toastEl, { delay: 4000 });
+      bsToast.show();
+      toastEl.addEventListener('hidden.bs.toast', function() { toastEl.remove(); });
+    }
   }
 
-  // Cargar todos los datos del servidor
   function refreshAppData() {
     showLoading(true);
     try {
       if (typeof google === 'undefined' || !google.script || !google.script.run) {
-        console.warn('google.script.run no está disponible en este entorno.');
         showLoading(false);
         renderDashboard();
         renderProyectosTable();
@@ -83,7 +77,7 @@
       }
 
       google.script.run
-        .withSuccessHandler(responseRaw => {
+        .withSuccessHandler(function(responseRaw) {
           showLoading(false);
           try {
             const response = typeof responseRaw === 'string' ? JSON.parse(responseRaw) : responseRaw;
@@ -98,34 +92,31 @@
               showToast((response && response.message) || 'Error al actualizar datos.', false);
             }
           } catch (err) {
-            console.error('Error al procesar datos iniciales:', err);
             showToast('Error al desplegar los datos: ' + err.message, false);
           }
         })
-        .withFailureHandler(err => {
+        .withFailureHandler(function(err) {
           showLoading(false);
           showToast('Error de conexión con el servidor: ' + (err ? err.message : 'Desconocido'), false);
         })
         .getInitialData();
     } catch (e) {
-      console.error('Error en refreshAppData:', e);
       showLoading(false);
       showToast('Error al iniciar la carga: ' + e.message, false);
     }
   }
 
-  // Navegación Vistas Sidebar
   function navigateTo(viewName) {
-    document.querySelectorAll('.view-section').forEach(el => {
+    document.querySelectorAll('.view-section').forEach(function(el) {
       if (el && el.classList) el.classList.add('d-none');
     });
     const target = document.getElementById('view-' + viewName);
     if (target && target.classList) target.classList.remove('d-none');
 
-    document.querySelectorAll('#sidebar ul li a').forEach(a => {
+    document.querySelectorAll('#sidebar ul li a').forEach(function(a) {
       if (a && a.classList) a.classList.remove('active');
     });
-    const activeLink = document.querySelector(`#sidebar ul li a[onclick*="${viewName}"]`);
+    const activeLink = document.querySelector('#sidebar ul li a[onclick*="' + viewName + '"]');
     if (activeLink && activeLink.classList) activeLink.classList.add('active');
 
     if (window.innerWidth <= 768) {
@@ -139,92 +130,87 @@
     if (sb && sb.classList) sb.classList.toggle('active');
   }
 
-  // ------------------------------------------------------------------
-  // DASHBOARD RENDER
-  // ------------------------------------------------------------------
   function renderDashboard() {
-    document.getElementById('dashTotalProyectos').innerText = APP_DATA.proyectos.length;
-    document.getElementById('dashTotalMinutas').innerText = APP_DATA.minutas.length;
+    const elProj = document.getElementById('dashTotalProyectos');
+    const elMin = document.getElementById('dashTotalMinutas');
+    if (elProj) elProj.innerText = APP_DATA.proyectos.length;
+    if (elMin) elMin.innerText = APP_DATA.minutas.length;
 
-    const porVencerCount = APP_DATA.acuerdos.filter(a => a.estado_calculado === 'Por vencer').length;
-    const vencidosCount = APP_DATA.acuerdos.filter(a => a.estado_calculado === 'Vencido').length;
+    const porVencerCount = APP_DATA.acuerdos.filter(function(a) { return a.estado_calculado === 'Por vencer'; }).length;
+    const vencidosCount = APP_DATA.acuerdos.filter(function(a) { return a.estado_calculado === 'Vencido'; }).length;
 
-    document.getElementById('dashPorVencer').innerText = porVencerCount;
-    document.getElementById('dashVencidos').innerText = vencidosCount;
+    const elPV = document.getElementById('dashPorVencer');
+    const elV = document.getElementById('dashVencidos');
+    if (elPV) elPV.innerText = porVencerCount;
+    if (elV) elV.innerText = vencidosCount;
 
-    // Tabla Críticos (Vencidos o Por Vencer)
     const criticos = APP_DATA.acuerdos
-      .filter(a => a.estado_calculado === 'Vencido' || a.estado_calculado === 'Por vencer')
+      .filter(function(a) { return a.estado_calculado === 'Vencido' || a.estado_calculado === 'Por vencer'; })
       .slice(0, 5);
 
     const tbodyCriticos = document.querySelector('#tableDashCriticos tbody');
-    tbodyCriticos.innerHTML = '';
-
-    if (criticos.length === 0) {
-      tbodyCriticos.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">¡Excelente! No hay acuerdos vencidos ni por vencer.</td></tr>`;
-    } else {
-      criticos.forEach(ac => {
-        const badgeClass = getBadgeClass(ac.estado_calculado);
-        tbodyCriticos.innerHTML += `
-          <tr>
-            <td class="fw-semibold text-slate-800">${escapeHtml(ac.descripcion)}</td>
-            <td>${escapeHtml(ac.responsable)}</td>
-            <td>${formatDateDisplayJS(ac.fecha_cumplimiento)}</td>
-            <td><span class="badge ${badgeClass}">${ac.estado_calculado}</span></td>
-          </tr>
-        `;
-      });
+    if (tbodyCriticos) {
+      tbodyCriticos.innerHTML = '';
+      if (criticos.length === 0) {
+        tbodyCriticos.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">¡Excelente! No hay acuerdos vencidos ni por vencer.</td></tr>';
+      } else {
+        criticos.forEach(function(ac) {
+          const badgeClass = getBadgeClass(ac.estado_calculado);
+          tbodyCriticos.innerHTML += '<tr>' +
+            '<td class="fw-semibold text-slate-800">' + escapeHtml(ac.descripcion) + '</td>' +
+            '<td>' + escapeHtml(ac.responsable) + '</td>' +
+            '<td>' + formatDateDisplayJS(ac.fecha_cumplimiento) + '</td>' +
+            '<td><span class="badge ' + badgeClass + '">' + escapeHtml(ac.estado_calculado) + '</span></td>' +
+          '</tr>';
+        });
+      }
     }
 
-    // Lista por Proyecto
     const projectListEl = document.getElementById('dashProjectList');
-    projectListEl.innerHTML = '';
+    if (projectListEl) {
+      projectListEl.innerHTML = '';
+      if (APP_DATA.proyectos.length === 0) {
+        projectListEl.innerHTML = '<p class="text-muted small">No hay proyectos registrados aún.</p>';
+      } else {
+        APP_DATA.proyectos.forEach(function(p) {
+          const minutasProj = APP_DATA.minutas.filter(function(m) { return m.id_proyecto === p.id_proyecto; });
+          const acuerdosProj = APP_DATA.acuerdos.filter(function(a) { return a.id_proyecto === p.id_proyecto; });
+          const pend = acuerdosProj.filter(function(a) {
+            return a.estado_calculado === 'Pendiente' || a.estado_calculado === 'Por vencer' || a.estado_calculado === 'Vencido';
+          }).length;
 
-    if (APP_DATA.proyectos.length === 0) {
-      projectListEl.innerHTML = '<p class="text-muted small">No hay proyectos registrados aún.</p>';
-    } else {
-      APP_DATA.proyectos.forEach(p => {
-        const minutasProj = APP_DATA.minutas.filter(m => m.id_proyecto === p.id_proyecto);
-        const acuerdosProj = APP_DATA.acuerdos.filter(a => a.id_proyecto === p.id_proyecto);
-        const pend = acuerdosProj.filter(a => a.estado_calculado === 'Pendiente' || a.estado_calculado === 'Por vencer' || a.estado_calculado === 'Vencido').length;
-
-        projectListEl.innerHTML += `
-          <div class="list-group-item d-flex justify-content-between align-items-center px-0">
-            <div>
-              <div class="fw-bold">${escapeHtml(p.nombre)}</div>
-              <small class="text-muted">${minutasProj.length} minutas | ${acuerdosProj.length} acuerdos totales</small>
-            </div>
-            <span class="badge bg-secondary rounded-pill">${pend} pendientes</span>
-          </div>
-        `;
-      });
+          projectListEl.innerHTML += '<div class="list-group-item d-flex justify-content-between align-items-center px-0">' +
+            '<div>' +
+              '<div class="fw-bold">' + escapeHtml(p.nombre) + '</div>' +
+              '<small class="text-muted">' + minutasProj.length + ' minutas | ' + acuerdosProj.length + ' acuerdos totales</small>' +
+            '</div>' +
+            '<span class="badge bg-secondary rounded-pill">' + pend + ' pendientes</span>' +
+          '</div>';
+        });
+      }
     }
   }
 
-  // ------------------------------------------------------------------
-  // PROYECTOS
-  // ------------------------------------------------------------------
   function renderProyectosTable() {
-    if (dtProyectos) {
+    if (dtProyectos && typeof dtProyectos.destroy === 'function') {
       dtProyectos.destroy();
     }
 
     const tbody = document.querySelector('#tableProyectos tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
-    APP_DATA.proyectos.forEach(p => {
-      tbody.innerHTML += `
-        <tr>
-          <td class="fw-bold">${escapeHtml(p.nombre)}</td>
-          <td>${escapeHtml(p.descripcion || '-')}</td>
-          <td>${formatDateDisplayJS(p.fecha_creacion)}</td>
-          <td><span class="badge bg-success">${p.estado}</span></td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-outline-primary me-1" onclick="openModalProyecto('${p.id_proyecto}')"><i class="bi bi-pencil"></i></button>
-            <button class="btn btn-sm btn-outline-danger" onclick="confirmEliminarProyecto('${p.id_proyecto}')"><i class="bi bi-trash"></i></button>
-          </td>
-        </tr>
-      `;
+    APP_DATA.proyectos.forEach(function(p) {
+      tbody.innerHTML += '<tr>' +
+        '<td class="fw-bold">' + escapeHtml(p.nombre) + '</td>' +
+        '<td>' + escapeHtml(p.descripcion || '-') + '</td>' +
+        '<td>' + formatDateDisplayJS(p.fecha_creacion) + '</td>' +
+        '<td><span class="badge bg-success">' + escapeHtml(p.estado) + '</span></td>' +
+        '<td class="text-end">' +
+          '<button class="btn btn-sm btn-outline-primary me-1" onclick="openModalProyecto(\'' + escapeJs(p.id_proyecto) + '\')"><i class="bi bi-pencil"></i></button>' +
+          '<button class="btn btn-sm btn-outline-danger" onclick="confirmEliminarProyecto(\'' + escapeJs(p.id_proyecto) + '\')"><i class="bi bi-trash"></i></button>' +
+        '</td>' +
+      '</tr>';
     });
 
     if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
@@ -236,13 +222,14 @@
     }
   }
 
-  function openModalProyecto(idProyecto = null) {
+  function openModalProyecto(idProyecto) {
+    if (idProyecto === undefined) idProyecto = null;
     document.getElementById('formProyecto').reset();
     document.getElementById('proyecto_id').value = '';
     document.getElementById('modalProyectoTitle').innerText = idProyecto ? 'Editar Proyecto' : 'Nuevo Proyecto';
 
     if (idProyecto) {
-      const p = APP_DATA.proyectos.find(item => item.id_proyecto === idProyecto);
+      const p = APP_DATA.proyectos.find(function(item) { return item.id_proyecto === idProyecto; });
       if (p) {
         document.getElementById('proyecto_id').value = p.id_proyecto;
         document.getElementById('proyecto_nombre').value = p.nombre;
@@ -266,7 +253,7 @@
 
     showLoading(true);
     google.script.run
-      .withSuccessHandler(resRaw => {
+      .withSuccessHandler(function(resRaw) {
         showLoading(false);
         const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
         if (res.success) {
@@ -277,7 +264,7 @@
           showToast(res.message, false);
         }
       })
-      .withFailureHandler(err => {
+      .withFailureHandler(function(err) {
         showLoading(false);
         showToast(err.message, false);
       })
@@ -288,7 +275,7 @@
     if (confirm('¿Está seguro de eliminar este proyecto? Esta acción no se puede deshacer.')) {
       showLoading(true);
       google.script.run
-        .withSuccessHandler(resRaw => {
+        .withSuccessHandler(function(resRaw) {
           showLoading(false);
           const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
           if (res.success) {
@@ -298,7 +285,7 @@
             showToast(res.message, false);
           }
         })
-        .withFailureHandler(err => {
+        .withFailureHandler(function(err) {
           showLoading(false);
           showToast(err.message, false);
         })
@@ -306,39 +293,35 @@
     }
   }
 
-  // ------------------------------------------------------------------
-  // MINUTAS Y FORMULARIO DINÁMICO
-  // ------------------------------------------------------------------
   function renderMinutasTable() {
-    if (dtMinutas) {
+    if (dtMinutas && typeof dtMinutas.destroy === 'function') {
       dtMinutas.destroy();
     }
 
     const tbody = document.querySelector('#tableMinutas tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
-    APP_DATA.minutas.forEach(m => {
+    APP_DATA.minutas.forEach(function(m) {
       const docBtn = m.doc_url
-        ? `<a href="${m.doc_url}" target="_blank" class="btn btn-sm btn-outline-primary me-1" title="Ver Google Docs"><i class="bi bi-file-earmark-word"></i></a>`
+        ? '<a href="' + escapeHtml(m.doc_url) + '" target="_blank" class="btn btn-sm btn-outline-primary me-1" title="Ver Google Docs"><i class="bi bi-file-earmark-word"></i></a>'
         : '';
       const pdfBtn = m.pdf_url
-        ? `<a href="${m.pdf_url}" target="_blank" class="btn btn-sm btn-outline-danger me-1" title="Ver PDF"><i class="bi bi-file-earmark-pdf"></i></a>`
+        ? '<a href="' + escapeHtml(m.pdf_url) + '" target="_blank" class="btn btn-sm btn-outline-danger me-1" title="Ver PDF"><i class="bi bi-file-earmark-pdf"></i></a>'
         : '';
 
-      tbody.innerHTML += `
-        <tr>
-          <td class="fw-bold">${escapeHtml(m.titulo)}</td>
-          <td><span class="badge bg-light text-dark border">${escapeHtml(m.nombre_proyecto)}</span></td>
-          <td>${formatDateDisplayJS(m.fecha_reunion)}</td>
-          <td>${escapeHtml(m.lugar || '-')}</td>
-          <td>${docBtn} ${pdfBtn}</td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-success me-1" onclick="handleGenerarDocumento('${m.id_minuta}')" title="Generar Documento y PDF"><i class="bi bi-gear-fill"></i> Documento</button>
-            <button class="btn btn-sm btn-outline-primary me-1" onclick="openModalMinuta('${m.id_minuta}')"><i class="bi bi-pencil"></i></button>
-            <button class="btn btn-sm btn-outline-danger" onclick="confirmEliminarMinuta('${m.id_minuta}')"><i class="bi bi-trash"></i></button>
-          </td>
-        </tr>
-      `;
+      tbody.innerHTML += '<tr>' +
+        '<td class="fw-bold">' + escapeHtml(m.titulo) + '</td>' +
+        '<td><span class="badge bg-light text-dark border">' + escapeHtml(m.nombre_proyecto) + '</span></td>' +
+        '<td>' + formatDateDisplayJS(m.fecha_reunion) + '</td>' +
+        '<td>' + escapeHtml(m.lugar || '-') + '</td>' +
+        '<td>' + docBtn + ' ' + pdfBtn + '</td>' +
+        '<td class="text-end">' +
+          '<button class="btn btn-sm btn-success me-1" onclick="handleGenerarDocumento(\'' + escapeJs(m.id_minuta) + '\')" title="Generar Documento y PDF"><i class="bi bi-gear-fill"></i> Documento</button>' +
+          '<button class="btn btn-sm btn-outline-primary me-1" onclick="openModalMinuta(\'' + escapeJs(m.id_minuta) + '\')"><i class="bi bi-pencil"></i></button>' +
+          '<button class="btn btn-sm btn-outline-danger" onclick="confirmEliminarMinuta(\'' + escapeJs(m.id_minuta) + '\')"><i class="bi bi-trash"></i></button>' +
+        '</td>' +
+      '</tr>';
     });
 
     if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
@@ -350,7 +333,8 @@
     }
   }
 
-  function openModalMinuta(idMinuta = null) {
+  function openModalMinuta(idMinuta) {
+    if (idMinuta === undefined) idMinuta = null;
     document.getElementById('formMinuta').reset();
     document.getElementById('minuta_id').value = '';
     document.getElementById('tbodyAsistencia').innerHTML = '';
@@ -363,11 +347,15 @@
       document.getElementById('modalMinutaTitle').innerText = 'Editar Minuta de Reunión';
       showLoading(true);
       google.script.run
-        .withSuccessHandler(resRaw => {
+        .withSuccessHandler(function(resRaw) {
           showLoading(false);
           const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
           if (res.success && res.data) {
-            const { minuta, asistencia, ordenDelDia, acuerdos } = res.data;
+            const minuta = res.data.minuta;
+            const asistencia = res.data.asistencia;
+            const ordenDelDia = res.data.ordenDelDia;
+            const acuerdos = res.data.acuerdos;
+
             document.getElementById('minuta_id').value = minuta.id_minuta;
             document.getElementById('minuta_proyecto').value = minuta.id_proyecto;
             document.getElementById('minuta_titulo').value = minuta.titulo;
@@ -375,23 +363,20 @@
             document.getElementById('minuta_lugar').value = minuta.lugar || '';
             document.getElementById('minuta_objetivo').value = minuta.objetivo || '';
 
-            // Cargar Asistencia
             if (asistencia && asistencia.length > 0) {
-              asistencia.forEach(a => addAsistenciaRow(a.nombre, a.dependencia, a.ap, a.at, a.na));
+              asistencia.forEach(function(a) { addAsistenciaRow(a.nombre, a.dependencia, a.ap, a.at, a.na); });
             } else {
               addAsistenciaRow();
             }
 
-            // Cargar Orden del día
             if (ordenDelDia && ordenDelDia.length > 0) {
-              ordenDelDia.forEach(o => addOrdenRow(o.descripcion));
+              ordenDelDia.forEach(function(o) { addOrdenRow(o.descripcion); });
             } else {
               addOrdenRow();
             }
 
-            // Cargar Acuerdos
             if (acuerdos && acuerdos.length > 0) {
-              acuerdos.forEach(ac => addAcuerdoRow(ac.descripcion, ac.responsable, formatDateISOJS(ac.fecha_cumplimiento)));
+              acuerdos.forEach(function(ac) { addAcuerdoRow(ac.descripcion, ac.responsable, formatDateISOJS(ac.fecha_cumplimiento)); });
             } else {
               addAcuerdoRow();
             }
@@ -399,7 +384,7 @@
             syncResponsablesOptions();
           }
         })
-        .withFailureHandler(err => {
+        .withFailureHandler(function(err) {
           showLoading(false);
           showToast(err.message, false);
         })
@@ -407,7 +392,6 @@
     } else {
       document.getElementById('modalMinutaTitle').innerText = 'Nueva Minuta de Reunión';
       document.getElementById('minuta_fecha').value = new Date().toISOString().split('T')[0];
-      // Agregar filas iniciales vacías
       addAsistenciaRow();
       addOrdenRow();
       addAcuerdoRow();
@@ -417,21 +401,25 @@
     modal.show();
   }
 
-  // --- FILAS DINÁMICAS TABLA ASISTENCIA ---
-  function addAsistenciaRow(nombre = '', dependencia = '', ap = true, at = false, na = false) {
+  function addAsistenciaRow(nombre, dependencia, ap, at, na) {
+    if (nombre === undefined) nombre = '';
+    if (dependencia === undefined) dependencia = '';
+    if (ap === undefined) ap = true;
+    if (at === undefined) at = false;
+    if (na === undefined) na = false;
+
     const tbody = document.getElementById('tbodyAsistencia');
+    if (!tbody) return;
     const rowIdx = tbody.children.length + 1;
 
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="text-center row-num">${rowIdx}</td>
-      <td><input type="text" class="form-control form-control-sm asistencia-nombre" value="${escapeHtml(nombre)}" placeholder="Nombre completo" required oninput="syncResponsablesOptions()"></td>
-      <td><input type="text" class="form-control form-control-sm asistencia-dep" value="${escapeHtml(dependencia)}" placeholder="Área / Entidad"></td>
-      <td class="text-center"><input type="checkbox" class="form-check-input asistencia-ap" ${ap ? 'checked' : ''} onchange="handleCheckboxAsistencia(this, 'ap')"></td>
-      <td class="text-center"><input type="checkbox" class="form-check-input asistencia-at" ${at ? 'checked' : ''} onchange="handleCheckboxAsistencia(this, 'at')"></td>
-      <td class="text-center"><input type="checkbox" class="form-check-input asistencia-na" ${na ? 'checked' : ''} onchange="handleCheckboxAsistencia(this, 'na')"></td>
-      <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeRow(this); syncResponsablesOptions();"><i class="bi bi-trash"></i></button></td>
-    `;
+    tr.innerHTML = '<td class="text-center row-num">' + rowIdx + '</td>' +
+      '<td><input type="text" class="form-control form-control-sm asistencia-nombre" value="' + escapeHtml(nombre) + '" placeholder="Nombre completo" required oninput="syncResponsablesOptions()"></td>' +
+      '<td><input type="text" class="form-control form-control-sm asistencia-dep" value="' + escapeHtml(dependencia) + '" placeholder="Área / Entidad"></td>' +
+      '<td class="text-center"><input type="checkbox" class="form-check-input asistencia-ap" ' + (ap ? 'checked' : '') + ' onchange="handleCheckboxAsistencia(this, \'ap\')"></td>' +
+      '<td class="text-center"><input type="checkbox" class="form-check-input asistencia-at" ' + (at ? 'checked' : '') + ' onchange="handleCheckboxAsistencia(this, \'at\')"></td>' +
+      '<td class="text-center"><input type="checkbox" class="form-check-input asistencia-na" ' + (na ? 'checked' : '') + ' onchange="handleCheckboxAsistencia(this, \'na\')"></td>' +
+      '<td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeRow(this); syncResponsablesOptions();"><i class="bi bi-trash"></i></button></td>';
 
     tbody.appendChild(tr);
     renumberTable('tbodyAsistencia');
@@ -439,7 +427,7 @@
 
   function handleCheckboxAsistencia(checkbox, type) {
     const tr = checkbox.closest('tr');
-    if (checkbox.checked) {
+    if (checkbox.checked && tr) {
       if (type === 'ap') {
         tr.querySelector('.asistencia-at').checked = false;
         tr.querySelector('.asistencia-na').checked = false;
@@ -453,39 +441,40 @@
     }
   }
 
-  // --- FILAS DINÁMICAS TABLA ORDEN DEL DÍA ---
-  function addOrdenRow(descripcion = '') {
+  function addOrdenRow(descripcion) {
+    if (descripcion === undefined) descripcion = '';
     const tbody = document.getElementById('tbodyOrden');
+    if (!tbody) return;
     const rowIdx = tbody.children.length + 1;
 
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="text-center row-num">${rowIdx}</td>
-      <td><input type="text" class="form-control form-control-sm orden-desc" value="${escapeHtml(descripcion)}" placeholder="Punto de agenda" required></td>
-      <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeRow(this);"><i class="bi bi-trash"></i></button></td>
-    `;
+    tr.innerHTML = '<td class="text-center row-num">' + rowIdx + '</td>' +
+      '<td><input type="text" class="form-control form-control-sm orden-desc" value="' + escapeHtml(descripcion) + '" placeholder="Punto de agenda" required></td>' +
+      '<td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeRow(this);"><i class="bi bi-trash"></i></button></td>';
 
     tbody.appendChild(tr);
     renumberTable('tbodyOrden');
   }
 
-  // --- FILAS DINÁMICAS TABLA ACCIONES Y ACUERDOS ---
-  function addAcuerdoRow(descripcion = '', responsable = '', fecha = '') {
+  function addAcuerdoRow(descripcion, responsable, fecha) {
+    if (descripcion === undefined) descripcion = '';
+    if (responsable === undefined) responsable = '';
+    if (fecha === undefined) fecha = '';
+
     const tbody = document.getElementById('tbodyAcuerdos');
+    if (!tbody) return;
     const rowIdx = tbody.children.length + 1;
 
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="text-center row-num">${rowIdx}</td>
-      <td><input type="text" class="form-control form-control-sm acuerdo-desc" value="${escapeHtml(descripcion)}" placeholder="Descripción del acuerdo" required></td>
-      <td>
-        <select class="form-select form-select-sm acuerdo-resp" required data-selected="${escapeHtml(responsable)}">
-          <option value="">-- Seleccione --</option>
-        </select>
-      </td>
-      <td><input type="date" class="form-control form-control-sm acuerdo-fecha" value="${fecha}" required></td>
-      <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeRow(this);"><i class="bi bi-trash"></i></button></td>
-    `;
+    tr.innerHTML = '<td class="text-center row-num">' + rowIdx + '</td>' +
+      '<td><input type="text" class="form-control form-control-sm acuerdo-desc" value="' + escapeHtml(descripcion) + '" placeholder="Descripción del acuerdo" required></td>' +
+      '<td>' +
+        '<select class="form-select form-select-sm acuerdo-resp" required data-selected="' + escapeHtml(responsable) + '">' +
+          '<option value="">-- Seleccione --</option>' +
+        '</select>' +
+      '</td>' +
+      '<td><input type="date" class="form-control form-control-sm acuerdo-fecha" value="' + escapeHtml(fecha) + '" required></td>' +
+      '<td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeRow(this);"><i class="bi bi-trash"></i></button></td>';
 
     tbody.appendChild(tr);
     renumberTable('tbodyAcuerdos');
@@ -494,32 +483,32 @@
 
   function removeRow(btn) {
     const tr = btn.closest('tr');
+    if (!tr) return;
     const tbody = tr.parentElement;
     tr.remove();
-    renumberTable(tbody.id);
+    if (tbody && tbody.id) renumberTable(tbody.id);
   }
 
   function renumberTable(tbodyId) {
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
-    Array.from(tbody.children).forEach((tr, index) => {
+    Array.from(tbody.children).forEach(function(tr, index) {
       const numTd = tr.querySelector('.row-num');
       if (numTd) numTd.innerText = index + 1;
     });
   }
 
-  // Sincroniza automáticamente los nombres de la lista de asistencia en el desplegable de responsables
   function syncResponsablesOptions() {
     const nombres = Array.from(document.querySelectorAll('#tbodyAsistencia .asistencia-nombre'))
-      .map(input => input.value.trim())
-      .filter(val => val !== '');
+      .map(function(input) { return input.value.trim(); })
+      .filter(function(val) { return val !== ''; });
 
     const selectResps = document.querySelectorAll('#tbodyAcuerdos .acuerdo-resp');
-    selectResps.forEach(select => {
+    selectResps.forEach(function(select) {
       const currentVal = select.value || select.getAttribute('data-selected') || '';
       select.innerHTML = '<option value="">-- Seleccione --</option>';
 
-      nombres.forEach(nombre => {
+      nombres.forEach(function(nombre) {
         const opt = document.createElement('option');
         opt.value = nombre;
         opt.textContent = nombre;
@@ -529,7 +518,6 @@
         select.appendChild(opt);
       });
 
-      // Si había una persona externa guardada previamente que ya no está en la asistencia
       if (currentVal && !nombres.includes(currentVal)) {
         const opt = document.createElement('option');
         opt.value = currentVal;
@@ -540,11 +528,9 @@
     });
   }
 
-  // Guardar Minuta Completa
   function handleGuardarMinuta(e) {
     e.preventDefault();
 
-    // 1. Recopilar datos principales
     const minuta = {
       id_minuta: document.getElementById('minuta_id').value,
       id_proyecto: document.getElementById('minuta_proyecto').value,
@@ -554,9 +540,8 @@
       objetivo: document.getElementById('minuta_objetivo').value
     };
 
-    // 2. Recopilar Asistencia
     const asistencia = [];
-    document.querySelectorAll('#tbodyAsistencia tr').forEach(tr => {
+    document.querySelectorAll('#tbodyAsistencia tr').forEach(function(tr) {
       asistencia.push({
         nombre: tr.querySelector('.asistencia-nombre').value,
         dependencia: tr.querySelector('.asistencia-dep').value,
@@ -566,17 +551,15 @@
       });
     });
 
-    // 3. Recopilar Orden del día
     const ordenDelDia = [];
-    document.querySelectorAll('#tbodyOrden tr').forEach(tr => {
+    document.querySelectorAll('#tbodyOrden tr').forEach(function(tr) {
       ordenDelDia.push({
         descripcion: tr.querySelector('.orden-desc').value
       });
     });
 
-    // 4. Recopilar Acuerdos
     const acuerdos = [];
-    document.querySelectorAll('#tbodyAcuerdos tr').forEach(tr => {
+    document.querySelectorAll('#tbodyAcuerdos tr').forEach(function(tr) {
       acuerdos.push({
         descripcion: tr.querySelector('.acuerdo-desc').value,
         responsable: tr.querySelector('.acuerdo-resp').value,
@@ -585,11 +568,11 @@
       });
     });
 
-    const payload = { minuta, asistencia, ordenDelDia, acuerdos };
+    const payload = { minuta: minuta, asistencia: asistencia, ordenDelDia: ordenDelDia, acuerdos: acuerdos };
 
     showLoading(true);
     google.script.run
-      .withSuccessHandler(resRaw => {
+      .withSuccessHandler(function(resRaw) {
         showLoading(false);
         const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
         if (res.success) {
@@ -600,7 +583,7 @@
           showToast(res.message, false);
         }
       })
-      .withFailureHandler(err => {
+      .withFailureHandler(function(err) {
         showLoading(false);
         showToast(err.message, false);
       })
@@ -611,7 +594,7 @@
     if (confirm('¿Desea eliminar esta minuta y todos sus registros asociados?')) {
       showLoading(true);
       google.script.run
-        .withSuccessHandler(resRaw => {
+        .withSuccessHandler(function(resRaw) {
           showLoading(false);
           const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
           if (res.success) {
@@ -621,7 +604,7 @@
             showToast(res.message, false);
           }
         })
-        .withFailureHandler(err => {
+        .withFailureHandler(function(err) {
           showLoading(false);
           showToast(err.message, false);
         })
@@ -629,11 +612,10 @@
     }
   }
 
-  // Generación de Documentos Docs & PDF
   function handleGenerarDocumento(idMinuta) {
     showLoading(true);
     google.script.run
-      .withSuccessHandler(resRaw => {
+      .withSuccessHandler(function(resRaw) {
         showLoading(false);
         const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
         if (res.success) {
@@ -643,45 +625,41 @@
           showToast(res.message, false);
         }
       })
-      .withFailureHandler(err => {
+      .withFailureHandler(function(err) {
         showLoading(false);
         showToast('Error al generar el documento: ' + err.message, false);
       })
       .generarDocumentoMinuta(idMinuta);
   }
 
-  // ------------------------------------------------------------------
-  // SEGUIMIENTO DE ACUERDOS
-  // ------------------------------------------------------------------
   function renderSeguimientoTable() {
-    if (dtSeguimiento) {
+    if (dtSeguimiento && typeof dtSeguimiento.destroy === 'function') {
       dtSeguimiento.destroy();
     }
 
     const tbody = document.querySelector('#tableSeguimiento tbody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
-    APP_DATA.acuerdos.forEach(ac => {
+    APP_DATA.acuerdos.forEach(function(ac) {
       const badgeClass = getBadgeClass(ac.estado_calculado);
-      const motivo = ac.motivo_cancelacion ? `<br><small class="text-muted"><em>Motivo: ${escapeHtml(ac.motivo_cancelacion)}</em></small>` : '';
+      const motivo = ac.motivo_cancelacion ? '<br><small class="text-muted"><em>Motivo: ' + escapeHtml(ac.motivo_cancelacion) + '</em></small>' : '';
 
-      tbody.innerHTML += `
-        <tr data-proyecto="${ac.id_proyecto}" data-estado="${ac.estado_calculado}" data-responsable="${escapeHtml(ac.responsable)}" data-fecha="${formatDateISOJS(ac.fecha_cumplimiento)}">
-          <td>
-            <div class="fw-bold">${escapeHtml(ac.nombre_proyecto)}</div>
-            <small class="text-muted">${escapeHtml(ac.titulo_minuta)}</small>
-          </td>
-          <td>${escapeHtml(ac.descripcion)}${motivo}</td>
-          <td><span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>${escapeHtml(ac.responsable)}</span></td>
-          <td>${formatDateDisplayJS(ac.fecha_cumplimiento)}</td>
-          <td><span class="badge ${badgeClass}">${ac.estado_calculado}</span></td>
-          <td class="text-end">
-            <button class="btn btn-sm btn-outline-primary" onclick="openModalEstadoAcuerdo('${ac.id_acuerdo}', '${ac.estado_calculado}', '${escapeHtml(ac.motivo_cancelacion || '')}')">
-              <i class="bi bi-arrow-repeat"></i> Cambiar Estado
-            </button>
-          </td>
-        </tr>
-      `;
+      tbody.innerHTML += '<tr data-proyecto="' + escapeHtml(ac.id_proyecto) + '" data-estado="' + escapeHtml(ac.estado_calculado) + '" data-responsable="' + escapeHtml(ac.responsable) + '" data-fecha="' + escapeHtml(formatDateISOJS(ac.fecha_cumplimiento)) + '">' +
+        '<td>' +
+          '<div class="fw-bold">' + escapeHtml(ac.nombre_proyecto) + '</div>' +
+          '<small class="text-muted">' + escapeHtml(ac.titulo_minuta) + '</small>' +
+        '</td>' +
+        '<td>' + escapeHtml(ac.descripcion) + motivo + '</td>' +
+        '<td><span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>' + escapeHtml(ac.responsable) + '</span></td>' +
+        '<td>' + formatDateDisplayJS(ac.fecha_cumplimiento) + '</td>' +
+        '<td><span class="badge ' + badgeClass + '">' + escapeHtml(ac.estado_calculado) + '</span></td>' +
+        '<td class="text-end">' +
+          '<button class="btn btn-sm btn-outline-primary" onclick="openModalEstadoAcuerdo(\'' + escapeJs(ac.id_acuerdo) + '\', \'' + escapeJs(ac.estado_calculado) + '\', \'' + escapeJs(ac.motivo_cancelacion || '') + '\')">' +
+            '<i class="bi bi-arrow-repeat"></i> Cambiar Estado' +
+          '</button>' +
+        '</td>' +
+      '</tr>';
     });
 
     if (typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
@@ -695,7 +673,8 @@
     applyAcuerdosFilters();
   }
 
-  function openModalEstadoAcuerdo(idAcuerdo, estadoActual, motivo = '') {
+  function openModalEstadoAcuerdo(idAcuerdo, estadoActual, motivo) {
+    if (motivo === undefined) motivo = '';
     document.getElementById('acuerdo_id_cambio').value = idAcuerdo;
     document.getElementById('acuerdo_nuevo_estado').value = (estadoActual === 'Por vencer' || estadoActual === 'Vencido') ? 'Pendiente' : estadoActual;
     document.getElementById('acuerdo_motivo_cancelacion').value = motivo;
@@ -724,7 +703,7 @@
 
     showLoading(true);
     google.script.run
-      .withSuccessHandler(resRaw => {
+      .withSuccessHandler(function(resRaw) {
         showLoading(false);
         const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
         if (res.success) {
@@ -735,7 +714,7 @@
           showToast(res.message, false);
         }
       })
-      .withFailureHandler(err => {
+      .withFailureHandler(function(err) {
         showLoading(false);
         showToast(err.message, false);
       })
@@ -743,7 +722,7 @@
   }
 
   function applyAcuerdosFilters() {
-    if (!dtSeguimiento) return;
+    if (!dtSeguimiento || typeof $ === 'undefined' || !$.fn || !$.fn.dataTable) return;
 
     const projFilter = document.getElementById('filterProyecto').value;
     const estadoFilter = document.getElementById('filterEstado').value;
@@ -771,36 +750,36 @@
     $.fn.dataTable.ext.search.pop();
   }
 
-  // Populate Desplegables de Selección
   function populateSelects() {
     populateSelectProyectos();
 
-    // Responsables en filtro seguimiento
     const filterResp = document.getElementById('filterResponsable');
-    filterResp.innerHTML = '<option value="">Todos los responsables</option>';
-    const responsables = Array.from(new Set(APP_DATA.acuerdos.map(a => a.responsable).filter(Boolean)));
-    responsables.sort().forEach(r => {
-      filterResp.innerHTML += `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`;
-    });
+    if (filterResp) {
+      filterResp.innerHTML = '<option value="">Todos los responsables</option>';
+      const responsables = Array.from(new Set(APP_DATA.acuerdos.map(function(a) { return a.responsable; }).filter(Boolean)));
+      responsables.sort().forEach(function(r) {
+        filterResp.innerHTML += '<option value="' + escapeHtml(r) + '">' + escapeHtml(r) + '</option>';
+      });
+    }
 
-    // Proyectos en filtro seguimiento
     const filterProj = document.getElementById('filterProyecto');
-    filterProj.innerHTML = '<option value="">Todos los proyectos</option>';
-    APP_DATA.proyectos.forEach(p => {
-      filterProj.innerHTML += `<option value="${p.id_proyecto}">${escapeHtml(p.nombre)}</option>`;
-    });
+    if (filterProj) {
+      filterProj.innerHTML = '<option value="">Todos los proyectos</option>';
+      APP_DATA.proyectos.forEach(function(p) {
+        filterProj.innerHTML += '<option value="' + escapeHtml(p.id_proyecto) + '">' + escapeHtml(p.nombre) + '</option>';
+      });
+    }
   }
 
   function populateSelectProyectos() {
     const sel = document.getElementById('minuta_proyecto');
     if (!sel) return;
     sel.innerHTML = '<option value="">-- Seleccione un Proyecto --</option>';
-    APP_DATA.proyectos.forEach(p => {
-      sel.innerHTML += `<option value="${p.id_proyecto}">${escapeHtml(p.nombre)}</option>`;
+    APP_DATA.proyectos.forEach(function(p) {
+      sel.innerHTML += '<option value="' + escapeHtml(p.id_proyecto) + '">' + escapeHtml(p.nombre) + '</option>';
     });
   }
 
-  // --- HELPERS AUXILIARES ---
   function getBadgeClass(estado) {
     switch (estado) {
       case 'Pendiente': return 'badge-pendiente';
@@ -822,14 +801,24 @@
       .replace(/'/g, '&#039;');
   }
 
+  function escapeJs(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r');
+  }
+
   function formatDateDisplayJS(dateStr) {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
+    if (isNaN(date.getTime())) return String(dateStr);
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    return day + '/' + month + '/' + year;
   }
 
   function formatDateISOJS(dateStr) {

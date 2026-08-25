@@ -2,7 +2,6 @@
  * Utils.gs - Funciones auxiliares y de almacenamiento para el sistema de Minutas.
  */
 
-// Nombre de la propiedad en ScriptProperties para guardar el ID de la hoja de cálculo
 const SPREADSHEET_PROPERTY_KEY = 'MINUTAS_SPREADSHEET_ID';
 
 /**
@@ -21,7 +20,6 @@ function getSpreadsheet() {
     }
   }
 
-  // Si no existe, crear la hoja de cálculo
   const newSs = SpreadsheetApp.create('DB_Sistema_Minutas_Seguimiento');
   props.setProperty(SPREADSHEET_PROPERTY_KEY, newSs.getId());
   setupDatabase(newSs);
@@ -54,7 +52,6 @@ function setupDatabase(ss) {
     }
   });
 
-  // Eliminar Hoja 1 por defecto si existe y hay más hojas
   const defaultSheet = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1');
   if (defaultSheet && ss.getSheets().length > 1) {
     try {
@@ -117,7 +114,7 @@ function formatDateISO(dateInput) {
 }
 
 /**
- * Formatea una fecha a string legible en español (ej. 15 de Octubre de 2023).
+ * Formatea una fecha a string legible en español (ej. dd/MM/yyyy).
  * @param {Date|string} dateInput
  * @returns {string}
  */
@@ -126,7 +123,7 @@ function formatDateDisplay(dateInput) {
   const date = (dateInput instanceof Date) ? dateInput : new Date(dateInput);
   if (isNaN(date.getTime())) return String(dateInput);
 
-  return Utilities.formatDate(date, Session.getScriptTimeZone() || "GMT", "dd/MM/yyyy");
+  return Utilities.formatDate(date, Session.getScriptTimeZone() || 'GMT', 'dd/MM/yyyy');
 }
 
 /**
@@ -134,7 +131,7 @@ function formatDateDisplay(dateInput) {
  * @returns {GoogleAppsScript.Drive.Folder}
  */
 function getOrCreateRootFolder() {
-  const folderName = "Minutas_y_Seguimiento_App";
+  const folderName = 'Minutas_y_Seguimiento_App';
   const folders = DriveApp.getFoldersByName(folderName);
   if (folders.hasNext()) {
     return folders.next();
@@ -149,10 +146,10 @@ function getOrCreateRootFolder() {
  * @param {string} [message]
  * @returns {string} JSON string
  */
-function buildResponse(success, data = null, message = "") {
+function buildResponse(success, data, message) {
   return JSON.stringify({
     success: success,
-    data: data,
-    message: message
+    data: data || null,
+    message: message || ''
   });
 }
