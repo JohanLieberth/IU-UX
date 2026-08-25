@@ -1,0 +1,787 @@
+<script>
+  // Variables Globales de Estado
+  let APP_DATA = {
+    proyectos: [],
+    minutas: [],
+    acuerdos: []
+  };
+
+  let dtProyectos = null;
+  let dtMinutas = null;
+  let dtSeguimiento = null;
+
+  // Al cargar el documento
+  document.addEventListener('DOMContentLoaded', () => {
+    refreshAppData();
+  });
+
+  // Mostrar U Ocultar Spinner de Carga
+  function showLoading(show = true) {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.style.display = show ? 'flex' : 'none';
+  }
+
+  // Notificaciones Toast (Bootstrap)
+  function showToast(message, isSuccess = true) {
+    const toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) return;
+
+    const toastId = 'toast_' + Date.now();
+    const bgClass = isSuccess ? 'bg-success text-white' : 'bg-danger text-white';
+    const icon = isSuccess ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
+
+    const html = `
+      <div id="${toastId}" class="toast align-items-center ${bgClass} border-0 mb-2 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body d-flex align-items-center gap-2">
+            <i class="bi ${icon} fs-5"></i>
+            <div>${message}</div>
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      </div>
+    `;
+
+    toastContainer.insertAdjacentHTML('beforeend', html);
+    const toastEl = document.getElementById(toastId);
+    const bsToast = new bootstrap.Toast(toastEl, { delay: 4000 });
+    bsToast.show();
+    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+  }
+
+  // Cargar todos los datos del servidor
+  function refreshAppData() {
+    showLoading(true);
+    google.script.run
+      .withSuccessHandler(responseRaw => {
+        showLoading(false);
+        const response = typeof responseRaw === 'string' ? JSON.parse(responseRaw) : responseRaw;
+        if (response.success) {
+          APP_DATA = response.data;
+          renderDashboard();
+          renderProyectosTable();
+          renderMinutasTable();
+          renderSeguimientoTable();
+          populateSelects();
+        } else {
+          showToast(response.message || 'Error al actualizar datos.', false);
+        }
+      })
+      .withFailureHandler(err => {
+        showLoading(false);
+        showToast('Error de conexión con el servidor: ' + err.message, false);
+      })
+      .getInitialData();
+  }
+
+  // Navegación Vistas Sidebar
+  function navigateTo(viewName) {
+    document.querySelectorAll('.view-section').forEach(el => el.classList.add('d-none'));
+    const target = document.getElementById('view-' + viewName);
+    if (target) target.classList.remove('d-none');
+
+    document.querySelectorAll('#sidebar ul li a').forEach(a => a.classList.remove('active'));
+    const activeLink = document.querySelector(`#sidebar ul li a[onclick*="${viewName}"]`);
+    if (activeLink) activeLink.classList.add('active');
+
+    if (window.innerWidth <= 768) {
+      document.getElementById('sidebar').classList.remove('active');
+    }
+  }
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('active');
+  }
+
+  // ------------------------------------------------------------------
+  // DASHBOARD RENDER
+  // ------------------------------------------------------------------
+  function renderDashboard() {
+    document.getElementById('dashTotalProyectos').innerText = APP_DATA.proyectos.length;
+    document.getElementById('dashTotalMinutas').innerText = APP_DATA.minutas.length;
+
+    const porVencerCount = APP_DATA.acuerdos.filter(a => a.estado_calculado === 'Por vencer').length;
+    const vencidosCount = APP_DATA.acuerdos.filter(a => a.estado_calculado === 'Vencido').length;
+
+    document.getElementById('dashPorVencer').innerText = porVencerCount;
+    document.getElementById('dashVencidos').innerText = vencidosCount;
+
+    // Tabla Críticos (Vencidos o Por Vencer)
+    const criticos = APP_DATA.acuerdos
+      .filter(a => a.estado_calculado === 'Vencido' || a.estado_calculado === 'Por vencer')
+      .slice(0, 5);
+
+    const tbodyCriticos = document.querySelector('#tableDashCriticos tbody');
+    tbodyCriticos.innerHTML = '';
+
+    if (criticos.length === 0) {
+      tbodyCriticos.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">¡Excelente! No hay acuerdos vencidos ni por vencer.</td></tr>`;
+    } else {
+      criticos.forEach(ac => {
+        const badgeClass = getBadgeClass(ac.estado_calculado);
+        tbodyCriticos.innerHTML += `
+          <tr>
+            <td class="fw-semibold text-slate-800">${escapeHtml(ac.descripcion)}</td>
+            <td>${escapeHtml(ac.responsable)}</td>
+            <td>${formatDateDisplayJS(ac.fecha_cumplimiento)}</td>
+            <td><span class="badge ${badgeClass}">${ac.estado_calculado}</span></td>
+          </tr>
+        `;
+      });
+    }
+
+    // Lista por Proyecto
+    const projectListEl = document.getElementById('dashProjectList');
+    projectListEl.innerHTML = '';
+
+    if (APP_DATA.proyectos.length === 0) {
+      projectListEl.innerHTML = '<p class="text-muted small">No hay proyectos registrados aún.</p>';
+    } else {
+      APP_DATA.proyectos.forEach(p => {
+        const minutasProj = APP_DATA.minutas.filter(m => m.id_proyecto === p.id_proyecto);
+        const acuerdosProj = APP_DATA.acuerdos.filter(a => a.id_proyecto === p.id_proyecto);
+        const pend = acuerdosProj.filter(a => a.estado_calculado === 'Pendiente' || a.estado_calculado === 'Por vencer' || a.estado_calculado === 'Vencido').length;
+
+        projectListEl.innerHTML += `
+          <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <div>
+              <div class="fw-bold">${escapeHtml(p.nombre)}</div>
+              <small class="text-muted">${minutasProj.length} minutas | ${acuerdosProj.length} acuerdos totales</small>
+            </div>
+            <span class="badge bg-secondary rounded-pill">${pend} pendientes</span>
+          </div>
+        `;
+      });
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // PROYECTOS
+  // ------------------------------------------------------------------
+  function renderProyectosTable() {
+    if (dtProyectos) {
+      dtProyectos.destroy();
+    }
+
+    const tbody = document.querySelector('#tableProyectos tbody');
+    tbody.innerHTML = '';
+
+    APP_DATA.proyectos.forEach(p => {
+      tbody.innerHTML += `
+        <tr>
+          <td class="fw-bold">${escapeHtml(p.nombre)}</td>
+          <td>${escapeHtml(p.descripcion || '-')}</td>
+          <td>${formatDateDisplayJS(p.fecha_creacion)}</td>
+          <td><span class="badge bg-success">${p.estado}</span></td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="openModalProyecto('${p.id_proyecto}')"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="confirmEliminarProyecto('${p.id_proyecto}')"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>
+      `;
+    });
+
+    dtProyectos = $('#tableProyectos').DataTable({
+      language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
+      pageLength: 10,
+      retrieve: true
+    });
+  }
+
+  function openModalProyecto(idProyecto = null) {
+    document.getElementById('formProyecto').reset();
+    document.getElementById('proyecto_id').value = '';
+    document.getElementById('modalProyectoTitle').innerText = idProyecto ? 'Editar Proyecto' : 'Nuevo Proyecto';
+
+    if (idProyecto) {
+      const p = APP_DATA.proyectos.find(item => item.id_proyecto === idProyecto);
+      if (p) {
+        document.getElementById('proyecto_id').value = p.id_proyecto;
+        document.getElementById('proyecto_nombre').value = p.nombre;
+        document.getElementById('proyecto_descripcion').value = p.descripcion || '';
+        document.getElementById('proyecto_estado').value = p.estado || 'Activo';
+      }
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('modalProyecto'));
+    modal.show();
+  }
+
+  function handleGuardarProyecto(e) {
+    e.preventDefault();
+    const data = {
+      id_proyecto: document.getElementById('proyecto_id').value,
+      nombre: document.getElementById('proyecto_nombre').value,
+      descripcion: document.getElementById('proyecto_descripcion').value,
+      estado: document.getElementById('proyecto_estado').value
+    };
+
+    showLoading(true);
+    google.script.run
+      .withSuccessHandler(resRaw => {
+        showLoading(false);
+        const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+        if (res.success) {
+          showToast(res.message);
+          bootstrap.Modal.getInstance(document.getElementById('modalProyecto')).hide();
+          refreshAppData();
+        } else {
+          showToast(res.message, false);
+        }
+      })
+      .withFailureHandler(err => {
+        showLoading(false);
+        showToast(err.message, false);
+      })
+      .guardarProyecto(data);
+  }
+
+  function confirmEliminarProyecto(idProyecto) {
+    if (confirm('¿Está seguro de eliminar este proyecto? Esta acción no se puede deshacer.')) {
+      showLoading(true);
+      google.script.run
+        .withSuccessHandler(resRaw => {
+          showLoading(false);
+          const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+          if (res.success) {
+            showToast(res.message);
+            refreshAppData();
+          } else {
+            showToast(res.message, false);
+          }
+        })
+        .withFailureHandler(err => {
+          showLoading(false);
+          showToast(err.message, false);
+        })
+        .eliminarProyecto(idProyecto);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // MINUTAS Y FORMULARIO DINÁMICO
+  // ------------------------------------------------------------------
+  function renderMinutasTable() {
+    if (dtMinutas) {
+      dtMinutas.destroy();
+    }
+
+    const tbody = document.querySelector('#tableMinutas tbody');
+    tbody.innerHTML = '';
+
+    APP_DATA.minutas.forEach(m => {
+      const docBtn = m.doc_url
+        ? `<a href="${m.doc_url}" target="_blank" class="btn btn-sm btn-outline-primary me-1" title="Ver Google Docs"><i class="bi bi-file-earmark-word"></i></a>`
+        : '';
+      const pdfBtn = m.pdf_url
+        ? `<a href="${m.pdf_url}" target="_blank" class="btn btn-sm btn-outline-danger me-1" title="Ver PDF"><i class="bi bi-file-earmark-pdf"></i></a>`
+        : '';
+
+      tbody.innerHTML += `
+        <tr>
+          <td class="fw-bold">${escapeHtml(m.titulo)}</td>
+          <td><span class="badge bg-light text-dark border">${escapeHtml(m.nombre_proyecto)}</span></td>
+          <td>${formatDateDisplayJS(m.fecha_reunion)}</td>
+          <td>${escapeHtml(m.lugar || '-')}</td>
+          <td>${docBtn} ${pdfBtn}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-success me-1" onclick="handleGenerarDocumento('${m.id_minuta}')" title="Generar Documento y PDF"><i class="bi bi-gear-fill"></i> Documento</button>
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="openModalMinuta('${m.id_minuta}')"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="confirmEliminarMinuta('${m.id_minuta}')"><i class="bi bi-trash"></i></button>
+          </td>
+        </tr>
+      `;
+    });
+
+    dtMinutas = $('#tableMinutas').DataTable({
+      language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
+      pageLength: 10,
+      retrieve: true
+    });
+  }
+
+  function openModalMinuta(idMinuta = null) {
+    document.getElementById('formMinuta').reset();
+    document.getElementById('minuta_id').value = '';
+    document.getElementById('tbodyAsistencia').innerHTML = '';
+    document.getElementById('tbodyOrden').innerHTML = '';
+    document.getElementById('tbodyAcuerdos').innerHTML = '';
+
+    populateSelectProyectos();
+
+    if (idMinuta) {
+      document.getElementById('modalMinutaTitle').innerText = 'Editar Minuta de Reunión';
+      showLoading(true);
+      google.script.run
+        .withSuccessHandler(resRaw => {
+          showLoading(false);
+          const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+          if (res.success && res.data) {
+            const { minuta, asistencia, ordenDelDia, acuerdos } = res.data;
+            document.getElementById('minuta_id').value = minuta.id_minuta;
+            document.getElementById('minuta_proyecto').value = minuta.id_proyecto;
+            document.getElementById('minuta_titulo').value = minuta.titulo;
+            document.getElementById('minuta_fecha').value = formatDateISOJS(minuta.fecha_reunion);
+            document.getElementById('minuta_lugar').value = minuta.lugar || '';
+            document.getElementById('minuta_objetivo').value = minuta.objetivo || '';
+
+            // Cargar Asistencia
+            if (asistencia && asistencia.length > 0) {
+              asistencia.forEach(a => addAsistenciaRow(a.nombre, a.dependencia, a.ap, a.at, a.na));
+            } else {
+              addAsistenciaRow();
+            }
+
+            // Cargar Orden del día
+            if (ordenDelDia && ordenDelDia.length > 0) {
+              ordenDelDia.forEach(o => addOrdenRow(o.descripcion));
+            } else {
+              addOrdenRow();
+            }
+
+            // Cargar Acuerdos
+            if (acuerdos && acuerdos.length > 0) {
+              acuerdos.forEach(ac => addAcuerdoRow(ac.descripcion, ac.responsable, formatDateISOJS(ac.fecha_cumplimiento)));
+            } else {
+              addAcuerdoRow();
+            }
+
+            syncResponsablesOptions();
+          }
+        })
+        .withFailureHandler(err => {
+          showLoading(false);
+          showToast(err.message, false);
+        })
+        .obtenerDetalleMinuta(idMinuta);
+    } else {
+      document.getElementById('modalMinutaTitle').innerText = 'Nueva Minuta de Reunión';
+      document.getElementById('minuta_fecha').value = new Date().toISOString().split('T')[0];
+      // Agregar filas iniciales vacías
+      addAsistenciaRow();
+      addOrdenRow();
+      addAcuerdoRow();
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('modalMinuta'));
+    modal.show();
+  }
+
+  // --- FILAS DINÁMICAS TABLA ASISTENCIA ---
+  function addAsistenciaRow(nombre = '', dependencia = '', ap = true, at = false, na = false) {
+    const tbody = document.getElementById('tbodyAsistencia');
+    const rowIdx = tbody.children.length + 1;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="text-center row-num">${rowIdx}</td>
+      <td><input type="text" class="form-control form-control-sm asistencia-nombre" value="${escapeHtml(nombre)}" placeholder="Nombre completo" required oninput="syncResponsablesOptions()"></td>
+      <td><input type="text" class="form-control form-control-sm asistencia-dep" value="${escapeHtml(dependencia)}" placeholder="Área / Entidad"></td>
+      <td class="text-center"><input type="checkbox" class="form-check-input asistencia-ap" ${ap ? 'checked' : ''} onchange="handleCheckboxAsistencia(this, 'ap')"></td>
+      <td class="text-center"><input type="checkbox" class="form-check-input asistencia-at" ${at ? 'checked' : ''} onchange="handleCheckboxAsistencia(this, 'at')"></td>
+      <td class="text-center"><input type="checkbox" class="form-check-input asistencia-na" ${na ? 'checked' : ''} onchange="handleCheckboxAsistencia(this, 'na')"></td>
+      <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeRow(this); syncResponsablesOptions();"><i class="bi bi-trash"></i></button></td>
+    `;
+
+    tbody.appendChild(tr);
+    renumberTable('tbodyAsistencia');
+  }
+
+  function handleCheckboxAsistencia(checkbox, type) {
+    const tr = checkbox.closest('tr');
+    if (checkbox.checked) {
+      if (type === 'ap') {
+        tr.querySelector('.asistencia-at').checked = false;
+        tr.querySelector('.asistencia-na').checked = false;
+      } else if (type === 'at') {
+        tr.querySelector('.asistencia-ap').checked = false;
+        tr.querySelector('.asistencia-na').checked = false;
+      } else if (type === 'na') {
+        tr.querySelector('.asistencia-ap').checked = false;
+        tr.querySelector('.asistencia-at').checked = false;
+      }
+    }
+  }
+
+  // --- FILAS DINÁMICAS TABLA ORDEN DEL DÍA ---
+  function addOrdenRow(descripcion = '') {
+    const tbody = document.getElementById('tbodyOrden');
+    const rowIdx = tbody.children.length + 1;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="text-center row-num">${rowIdx}</td>
+      <td><input type="text" class="form-control form-control-sm orden-desc" value="${escapeHtml(descripcion)}" placeholder="Punto de agenda" required></td>
+      <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeRow(this);"><i class="bi bi-trash"></i></button></td>
+    `;
+
+    tbody.appendChild(tr);
+    renumberTable('tbodyOrden');
+  }
+
+  // --- FILAS DINÁMICAS TABLA ACCIONES Y ACUERDOS ---
+  function addAcuerdoRow(descripcion = '', responsable = '', fecha = '') {
+    const tbody = document.getElementById('tbodyAcuerdos');
+    const rowIdx = tbody.children.length + 1;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="text-center row-num">${rowIdx}</td>
+      <td><input type="text" class="form-control form-control-sm acuerdo-desc" value="${escapeHtml(descripcion)}" placeholder="Descripción del acuerdo" required></td>
+      <td>
+        <select class="form-select form-select-sm acuerdo-resp" required data-selected="${escapeHtml(responsable)}">
+          <option value="">-- Seleccione --</option>
+        </select>
+      </td>
+      <td><input type="date" class="form-control form-control-sm acuerdo-fecha" value="${fecha}" required></td>
+      <td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeRow(this);"><i class="bi bi-trash"></i></button></td>
+    `;
+
+    tbody.appendChild(tr);
+    renumberTable('tbodyAcuerdos');
+    syncResponsablesOptions();
+  }
+
+  function removeRow(btn) {
+    const tr = btn.closest('tr');
+    const tbody = tr.parentElement;
+    tr.remove();
+    renumberTable(tbody.id);
+  }
+
+  function renumberTable(tbodyId) {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    Array.from(tbody.children).forEach((tr, index) => {
+      const numTd = tr.querySelector('.row-num');
+      if (numTd) numTd.innerText = index + 1;
+    });
+  }
+
+  // Sincroniza automáticamente los nombres de la lista de asistencia en el desplegable de responsables
+  function syncResponsablesOptions() {
+    const nombres = Array.from(document.querySelectorAll('#tbodyAsistencia .asistencia-nombre'))
+      .map(input => input.value.trim())
+      .filter(val => val !== '');
+
+    const selectResps = document.querySelectorAll('#tbodyAcuerdos .acuerdo-resp');
+    selectResps.forEach(select => {
+      const currentVal = select.value || select.getAttribute('data-selected') || '';
+      select.innerHTML = '<option value="">-- Seleccione --</option>';
+
+      nombres.forEach(nombre => {
+        const opt = document.createElement('option');
+        opt.value = nombre;
+        opt.textContent = nombre;
+        if (nombre === currentVal) {
+          opt.selected = true;
+        }
+        select.appendChild(opt);
+      });
+
+      // Si había una persona externa guardada previamente que ya no está en la asistencia
+      if (currentVal && !nombres.includes(currentVal)) {
+        const opt = document.createElement('option');
+        opt.value = currentVal;
+        opt.textContent = currentVal;
+        opt.selected = true;
+        select.appendChild(opt);
+      }
+    });
+  }
+
+  // Guardar Minuta Completa
+  function handleGuardarMinuta(e) {
+    e.preventDefault();
+
+    // 1. Recopilar datos principales
+    const minuta = {
+      id_minuta: document.getElementById('minuta_id').value,
+      id_proyecto: document.getElementById('minuta_proyecto').value,
+      titulo: document.getElementById('minuta_titulo').value,
+      fecha_reunion: document.getElementById('minuta_fecha').value,
+      lugar: document.getElementById('minuta_lugar').value,
+      objetivo: document.getElementById('minuta_objetivo').value
+    };
+
+    // 2. Recopilar Asistencia
+    const asistencia = [];
+    document.querySelectorAll('#tbodyAsistencia tr').forEach(tr => {
+      asistencia.push({
+        nombre: tr.querySelector('.asistencia-nombre').value,
+        dependencia: tr.querySelector('.asistencia-dep').value,
+        ap: tr.querySelector('.asistencia-ap').checked,
+        at: tr.querySelector('.asistencia-at').checked,
+        na: tr.querySelector('.asistencia-na').checked
+      });
+    });
+
+    // 3. Recopilar Orden del día
+    const ordenDelDia = [];
+    document.querySelectorAll('#tbodyOrden tr').forEach(tr => {
+      ordenDelDia.push({
+        descripcion: tr.querySelector('.orden-desc').value
+      });
+    });
+
+    // 4. Recopilar Acuerdos
+    const acuerdos = [];
+    document.querySelectorAll('#tbodyAcuerdos tr').forEach(tr => {
+      acuerdos.push({
+        descripcion: tr.querySelector('.acuerdo-desc').value,
+        responsable: tr.querySelector('.acuerdo-resp').value,
+        fecha_cumplimiento: tr.querySelector('.acuerdo-fecha').value,
+        estado: 'Pendiente'
+      });
+    });
+
+    const payload = { minuta, asistencia, ordenDelDia, acuerdos };
+
+    showLoading(true);
+    google.script.run
+      .withSuccessHandler(resRaw => {
+        showLoading(false);
+        const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+        if (res.success) {
+          showToast(res.message);
+          bootstrap.Modal.getInstance(document.getElementById('modalMinuta')).hide();
+          refreshAppData();
+        } else {
+          showToast(res.message, false);
+        }
+      })
+      .withFailureHandler(err => {
+        showLoading(false);
+        showToast(err.message, false);
+      })
+      .guardarMinutaCompleta(payload);
+  }
+
+  function confirmEliminarMinuta(idMinuta) {
+    if (confirm('¿Desea eliminar esta minuta y todos sus registros asociados?')) {
+      showLoading(true);
+      google.script.run
+        .withSuccessHandler(resRaw => {
+          showLoading(false);
+          const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+          if (res.success) {
+            showToast(res.message);
+            refreshAppData();
+          } else {
+            showToast(res.message, false);
+          }
+        })
+        .withFailureHandler(err => {
+          showLoading(false);
+          showToast(err.message, false);
+        })
+        .eliminarMinuta(idMinuta);
+    }
+  }
+
+  // Generación de Documentos Docs & PDF
+  function handleGenerarDocumento(idMinuta) {
+    showLoading(true);
+    google.script.run
+      .withSuccessHandler(resRaw => {
+        showLoading(false);
+        const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+        if (res.success) {
+          showToast(res.message);
+          refreshAppData();
+        } else {
+          showToast(res.message, false);
+        }
+      })
+      .withFailureHandler(err => {
+        showLoading(false);
+        showToast('Error al generar el documento: ' + err.message, false);
+      })
+      .generarDocumentoMinuta(idMinuta);
+  }
+
+  // ------------------------------------------------------------------
+  // SEGUIMIENTO DE ACUERDOS
+  // ------------------------------------------------------------------
+  function renderSeguimientoTable() {
+    if (dtSeguimiento) {
+      dtSeguimiento.destroy();
+    }
+
+    const tbody = document.querySelector('#tableSeguimiento tbody');
+    tbody.innerHTML = '';
+
+    APP_DATA.acuerdos.forEach(ac => {
+      const badgeClass = getBadgeClass(ac.estado_calculado);
+      const motivo = ac.motivo_cancelacion ? `<br><small class="text-muted"><em>Motivo: ${escapeHtml(ac.motivo_cancelacion)}</em></small>` : '';
+
+      tbody.innerHTML += `
+        <tr data-proyecto="${ac.id_proyecto}" data-estado="${ac.estado_calculado}" data-responsable="${escapeHtml(ac.responsable)}" data-fecha="${formatDateISOJS(ac.fecha_cumplimiento)}">
+          <td>
+            <div class="fw-bold">${escapeHtml(ac.nombre_proyecto)}</div>
+            <small class="text-muted">${escapeHtml(ac.titulo_minuta)}</small>
+          </td>
+          <td>${escapeHtml(ac.descripcion)}${motivo}</td>
+          <td><span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>${escapeHtml(ac.responsable)}</span></td>
+          <td>${formatDateDisplayJS(ac.fecha_cumplimiento)}</td>
+          <td><span class="badge ${badgeClass}">${ac.estado_calculado}</span></td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary" onclick="openModalEstadoAcuerdo('${ac.id_acuerdo}', '${ac.estado_calculado}', '${escapeHtml(ac.motivo_cancelacion || '')}')">
+              <i class="bi bi-arrow-repeat"></i> Cambiar Estado
+            </button>
+          </td>
+        </tr>
+      `;
+    });
+
+    dtSeguimiento = $('#tableSeguimiento').DataTable({
+      language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
+      pageLength: 15,
+      retrieve: true
+    });
+
+    applyAcuerdosFilters();
+  }
+
+  function openModalEstadoAcuerdo(idAcuerdo, estadoActual, motivo = '') {
+    document.getElementById('acuerdo_id_cambio').value = idAcuerdo;
+    document.getElementById('acuerdo_nuevo_estado').value = (estadoActual === 'Por vencer' || estadoActual === 'Vencido') ? 'Pendiente' : estadoActual;
+    document.getElementById('acuerdo_motivo_cancelacion').value = motivo;
+    toggleMotivoCancelacion(document.getElementById('acuerdo_nuevo_estado').value);
+
+    const modal = new bootstrap.Modal(document.getElementById('modalEstadoAcuerdo'));
+    modal.show();
+  }
+
+  function toggleMotivoCancelacion(estado) {
+    const group = document.getElementById('groupMotivoCancelacion');
+    if (estado === 'Cancelado') {
+      group.classList.remove('d-none');
+    } else {
+      group.classList.add('d-none');
+    }
+  }
+
+  function handleGuardarEstadoAcuerdo(e) {
+    e.preventDefault();
+    const idAcuerdo = document.getElementById('acuerdo_id_cambio').value;
+    const nuevoEstado = document.getElementById('acuerdo_nuevo_estado').value;
+    const motivo = document.getElementById('acuerdo_motivo_cancelacion').value;
+
+    showLoading(true);
+    google.script.run
+      .withSuccessHandler(resRaw => {
+        showLoading(false);
+        const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+        if (res.success) {
+          showToast(res.message);
+          bootstrap.Modal.getInstance(document.getElementById('modalEstadoAcuerdo')).hide();
+          refreshAppData();
+        } else {
+          showToast(res.message, false);
+        }
+      })
+      .withFailureHandler(err => {
+        showLoading(false);
+        showToast(err.message, false);
+      })
+      .actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivo);
+  }
+
+  function applyAcuerdosFilters() {
+    if (!dtSeguimiento) return;
+
+    const projFilter = document.getElementById('filterProyecto').value;
+    const estadoFilter = document.getElementById('filterEstado').value;
+    const respFilter = document.getElementById('filterResponsable').value;
+    const fechaFinFilter = document.getElementById('filterFechaFin').value;
+
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex, rowData, rowNode) {
+      if (settings.nTable.id !== 'tableSeguimiento') return true;
+
+      const node = $(rowNode);
+      const proj = node.attr('data-proyecto');
+      const estado = node.attr('data-estado');
+      const resp = node.attr('data-responsable');
+      const fecha = node.attr('data-fecha');
+
+      if (projFilter && proj !== projFilter) return false;
+      if (estadoFilter && estado !== estadoFilter) return false;
+      if (respFilter && resp !== respFilter) return false;
+      if (fechaFinFilter && fecha > fechaFinFilter) return false;
+
+      return true;
+    });
+
+    dtSeguimiento.draw();
+    $.fn.dataTable.ext.search.pop();
+  }
+
+  // Populate Desplegables de Selección
+  function populateSelects() {
+    populateSelectProyectos();
+
+    // Responsables en filtro seguimiento
+    const filterResp = document.getElementById('filterResponsable');
+    filterResp.innerHTML = '<option value="">Todos los responsables</option>';
+    const responsables = Array.from(new Set(APP_DATA.acuerdos.map(a => a.responsable).filter(Boolean)));
+    responsables.sort().forEach(r => {
+      filterResp.innerHTML += `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`;
+    });
+
+    // Proyectos en filtro seguimiento
+    const filterProj = document.getElementById('filterProyecto');
+    filterProj.innerHTML = '<option value="">Todos los proyectos</option>';
+    APP_DATA.proyectos.forEach(p => {
+      filterProj.innerHTML += `<option value="${p.id_proyecto}">${escapeHtml(p.nombre)}</option>`;
+    });
+  }
+
+  function populateSelectProyectos() {
+    const sel = document.getElementById('minuta_proyecto');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- Seleccione un Proyecto --</option>';
+    APP_DATA.proyectos.forEach(p => {
+      sel.innerHTML += `<option value="${p.id_proyecto}">${escapeHtml(p.nombre)}</option>`;
+    });
+  }
+
+  // --- HELPERS AUXILIARES ---
+  function getBadgeClass(estado) {
+    switch (estado) {
+      case 'Pendiente': return 'badge-pendiente';
+      case 'Por vencer': return 'badge-por-vencer';
+      case 'Vencido': return 'badge-vencido';
+      case 'Atendido': return 'badge-atendido';
+      case 'Cancelado': return 'badge-cancelado';
+      default: return 'bg-secondary';
+    }
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function formatDateDisplayJS(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr;
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  function formatDateISOJS(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return String(dateStr).split('T')[0];
+    return date.toISOString().split('T')[0];
+  }
+</script>

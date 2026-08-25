@@ -1,0 +1,108 @@
+<div class="container-fluid fade-in">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold mb-1 text-slate-800">Dashboard de Seguimiento</h2>
+      <p class="text-muted mb-0">Resumen general de minutas, proyectos y estado de acuerdos.</p>
+    </div>
+    <button class="btn btn-primary btn-sm rounded-pill px-3" onclick="refreshAppData()">
+      <i class="bi bi-arrow-clockwise me-1"></i> Actualizar Datos
+    </button>
+  </div>
+
+  <!-- Métricas Rápidas -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card stat-card bg-white p-3 border-start border-4 border-primary">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted small fw-semibold text-uppercase">Total Proyectos</span>
+            <h3 class="fw-bold my-1" id="dashTotalProyectos">0</h3>
+          </div>
+          <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle">
+            <i class="bi bi-folder2-open fs-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card stat-card bg-white p-3 border-start border-4 border-info">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted small fw-semibold text-uppercase">Total Minutas</span>
+            <h3 class="fw-bold my-1" id="dashTotalMinutas">0</h3>
+          </div>
+          <div class="bg-info bg-opacity-10 text-info p-3 rounded-circle">
+            <i class="bi bi-journal-text fs-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card stat-card bg-white p-3 border-start border-4 border-warning">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted small fw-semibold text-uppercase">Por Vencer (≤3 días)</span>
+            <h3 class="fw-bold my-1 text-warning" id="dashPorVencer">0</h3>
+          </div>
+          <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle">
+            <i class="bi bi-exclamation-triangle fs-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card stat-card bg-white p-3 border-start border-4 border-danger">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted small fw-semibold text-uppercase">Acuerdos Vencidos</span>
+            <h3 class="fw-bold my-1 text-danger" id="dashVencidos">0</h3>
+          </div>
+          <div class="bg-danger bg-opacity-10 text-danger p-3 rounded-circle">
+            <i class="bi bi-x-circle fs-3"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paneles Secundarios -->
+  <div class="row g-4">
+    <!-- Alertas de Acuerdos Críticos -->
+    <div class="col-12 col-lg-7">
+      <div class="card card-custom p-3 h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold mb-0 text-slate-800"><i class="bi bi-bell me-2 text-danger"></i>Acuerdos Críticos y Próximos</h5>
+          <button class="btn btn-link btn-sm text-decoration-none" onclick="navigateTo('seguimiento')">Ver todos</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" id="tableDashCriticos">
+            <thead class="table-light">
+              <tr>
+                <th>Acuerdo / Descripción</th>
+                <th>Responsable</th>
+                <th>Límite</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Dinámico -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resumen por Proyecto -->
+    <div class="col-12 col-lg-5">
+      <div class="card card-custom p-3 h-100">
+        <h5 class="fw-bold mb-3 text-slate-800"><i class="bi bi-pie-chart me-2 text-primary"></i>Resumen por Proyecto</h5>
+        <div class="list-group list-group-flush" id="dashProjectList">
+          <!-- Dinámico -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
