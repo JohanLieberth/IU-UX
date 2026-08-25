@@ -121,6 +121,9 @@ function generateId() {
  */
 function formatDateISO(dateInput) {
   if (!dateInput) return '';
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())) {
+    return dateInput.trim();
+  }
   const date = (dateInput instanceof Date) ? dateInput : new Date(dateInput);
   if (isNaN(date.getTime())) return String(dateInput);
 

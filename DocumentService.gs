@@ -58,7 +58,11 @@ function generarDocumentoMinuta(idMinuta) {
     metaTable.setBorderColor('#CBD5E1');
     for (let r = 0; r < metaTable.getNumRows(); r++) {
       const row = metaTable.getRow(r);
-      row.getCell(0).setBold(true).setBackgroundColor('#F1F5F9').setWidth(120);
+      const cell0 = row.getCell(0);
+      cell0.setBackgroundColor('#F1F5F9').setWidth(120);
+      if (cell0.editAsText) {
+        cell0.editAsText().setBold(true);
+      }
       row.getCell(1).setWidth(380);
     }
 

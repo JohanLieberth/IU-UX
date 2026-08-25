@@ -775,32 +775,65 @@
   }
 
   function applyAcuerdosFilters() {
-    if (!dtSeguimiento || typeof $ === 'undefined' || !$.fn || !$.fn.dataTable) return;
+    const elProj = document.getElementById('filterProyecto');
+    const elEstado = document.getElementById('filterEstado');
+    const elResp = document.getElementById('filterResponsable');
+    const elFechaFin = document.getElementById('filterFechaFin');
 
-    const projFilter = document.getElementById('filterProyecto').value;
-    const estadoFilter = document.getElementById('filterEstado').value;
-    const respFilter = document.getElementById('filterResponsable').value;
-    const fechaFinFilter = document.getElementById('filterFechaFin').value;
+    const projFilter = elProj ? elProj.value : '';
+    const estadoFilter = elEstado ? elEstado.value : '';
+    const respFilter = elResp ? elResp.value : '';
+    const fechaFinFilter = elFechaFin ? elFechaFin.value : '';
 
-    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex, rowData, rowNode) {
-      if (settings.nTable.id !== 'tableSeguimiento') return true;
+    if (dtSeguimiento && typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
+      $.fn.dataTable.ext.search.push(function(settings, data, dataIndex, rowData, rowNode) {
+        if (settings.nTable.id !== 'tableSeguimiento') return true;
 
-      const node = $(rowNode);
-      const proj = node.attr('data-proyecto');
-      const estado = node.attr('data-estado');
-      const resp = node.attr('data-responsable');
-      const fecha = node.attr('data-fecha');
+        const node = $(rowNode);
+        const proj = node.attr('data-proyecto') || '';
+        const estado = node.attr('data-estado') || '';
+        const respStr = node.attr('data-responsable') || '';
+        const fecha = node.attr('data-fecha') || '';
 
-      if (projFilter && proj !== projFilter) return false;
-      if (estadoFilter && estado !== estadoFilter) return false;
-      if (respFilter && resp !== respFilter) return false;
-      if (fechaFinFilter && fecha > fechaFinFilter) return false;
+        if (projFilter && proj !== projFilter) return false;
+        if (estadoFilter && estado !== estadoFilter) return false;
 
-      return true;
-    });
+        if (respFilter) {
+          const respList = respStr.split(',').map(function(s) { return s.trim(); });
+          if (!respList.includes(respFilter) && !respList.includes('Todos')) {
+            return false;
+          }
+        }
 
-    dtSeguimiento.draw();
-    $.fn.dataTable.ext.search.pop();
+        if (fechaFinFilter && fecha && fecha > fechaFinFilter) return false;
+
+        return true;
+      });
+
+      dtSeguimiento.draw();
+      $.fn.dataTable.ext.search.pop();
+    } else {
+      const rows = document.querySelectorAll('#tableSeguimiento tbody tr');
+      rows.forEach(function(tr) {
+        const proj = tr.getAttribute('data-proyecto') || '';
+        const estado = tr.getAttribute('data-estado') || '';
+        const respStr = tr.getAttribute('data-responsable') || '';
+        const fecha = tr.getAttribute('data-fecha') || '';
+
+        let show = true;
+        if (projFilter && proj !== projFilter) show = false;
+        if (estadoFilter && estado !== estadoFilter) show = false;
+        if (respFilter) {
+          const respList = respStr.split(',').map(function(s) { return s.trim(); });
+          if (!respList.includes(respFilter) && !respList.includes('Todos')) {
+            show = false;
+          }
+        }
+        if (fechaFinFilter && fecha && fecha > fechaFinFilter) show = false;
+
+        tr.style.display = show ? '' : 'none';
+      });
+    }
   }
 
   function populateSelects() {
@@ -808,18 +841,33 @@
 
     const filterResp = document.getElementById('filterResponsable');
     if (filterResp) {
+      const currentResp = filterResp.value;
       filterResp.innerHTML = '<option value="">Todos los responsables</option>';
-      const responsables = Array.from(new Set(APP_DATA.acuerdos.map(function(a) { return a.responsable; }).filter(Boolean)));
-      responsables.sort().forEach(function(r) {
-        filterResp.innerHTML += '<option value="' + escapeHtml(r) + '">' + escapeHtml(r) + '</option>';
+
+      const respSet = new Set();
+      APP_DATA.acuerdos.forEach(function(a) {
+        if (a.responsable) {
+          const list = a.responsable.split(',').map(function(s) { return s.trim(); });
+          list.forEach(function(item) {
+            if (item) respSet.add(item);
+          });
+        }
+      });
+
+      const responsables = Array.from(respSet).sort();
+      responsables.forEach(function(r) {
+        const selected = (r === currentResp) ? 'selected' : '';
+        filterResp.innerHTML += '<option value="' + escapeHtml(r) + '" ' + selected + '>' + escapeHtml(r) + '</option>';
       });
     }
 
     const filterProj = document.getElementById('filterProyecto');
     if (filterProj) {
+      const currentProj = filterProj.value;
       filterProj.innerHTML = '<option value="">Todos los proyectos</option>';
       APP_DATA.proyectos.forEach(function(p) {
-        filterProj.innerHTML += '<option value="' + escapeHtml(p.id_proyecto) + '">' + escapeHtml(p.nombre) + '</option>';
+        const selected = (p.id_proyecto === currentProj) ? 'selected' : '';
+        filterProj.innerHTML += '<option value="' + escapeHtml(p.id_proyecto) + '" ' + selected + '>' + escapeHtml(p.nombre) + '</option>';
       });
     }
   }
