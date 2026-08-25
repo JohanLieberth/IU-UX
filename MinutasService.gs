@@ -129,6 +129,7 @@ function guardarMinutaCompleta(payload) {
           generateId(),
           idMinuta,
           index + 1,
+          item.tipo || 'Acuerdo',
           item.descripcion,
           item.responsable,
           formatDateISO(item.fecha_cumplimiento),

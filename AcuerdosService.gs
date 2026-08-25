@@ -73,9 +73,9 @@ function actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivoCancelacion) {
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === idAcuerdo) {
-        sheet.getRange(i + 1, 7).setValue(nuevoEstado);
+        sheet.getRange(i + 1, 8).setValue(nuevoEstado);
         if (nuevoEstado === 'Cancelado') {
-          sheet.getRange(i + 1, 8).setValue(motivoCancelacion || '');
+          sheet.getRange(i + 1, 9).setValue(motivoCancelacion || '');
         }
         return buildResponse(true, { id_acuerdo: idAcuerdo, nuevo_estado: nuevoEstado }, 'Estado de acuerdo actualizado.');
       }

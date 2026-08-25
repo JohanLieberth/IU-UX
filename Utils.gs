@@ -53,7 +53,7 @@ function setupDatabase(ss) {
     'Minutas': ['id_minuta', 'id_proyecto', 'titulo', 'fecha_reunion', 'lugar', 'objetivo', 'doc_url', 'pdf_url', 'fecha_creacion'],
     'Asistencia': ['id_asistencia', 'id_minuta', 'numero', 'nombre', 'dependencia', 'ap', 'at', 'na'],
     'OrdenDelDia': ['id_orden', 'id_minuta', 'numero', 'descripcion'],
-    'Acuerdos': ['id_acuerdo', 'id_minuta', 'numero', 'descripcion', 'responsable', 'fecha_cumplimiento', 'estado', 'motivo_cancelacion']
+    'Acuerdos': ['id_acuerdo', 'id_minuta', 'numero', 'tipo', 'descripcion', 'responsable', 'fecha_cumplimiento', 'estado', 'motivo_cancelacion']
   };
 
   Object.keys(schema).forEach(sheetName => {

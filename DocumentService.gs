@@ -173,8 +173,13 @@ function generarDocumentoMinuta(idMinuta) {
         const row = firmaTable.getRow(r);
         const cell1 = row.getCell(0).setWidth(245).setPaddingTop(20).setPaddingBottom(20);
         const cell2 = row.getCell(1).setWidth(245).setPaddingTop(20).setPaddingBottom(20);
-        cell1.getChild(0).setParagraphInTableAlignment(DocumentApp.HorizontalAlignment.CENTER);
-        cell2.getChild(0).setParagraphInTableAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+        if (cell1.getNumChildren() > 0 && cell1.getChild(0).getType() === DocumentApp.ElementType.PARAGRAPH) {
+          cell1.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+        }
+        if (cell2.getNumChildren() > 0 && cell2.getChild(0).getType() === DocumentApp.ElementType.PARAGRAPH) {
+          cell2.getChild(0).asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+        }
       }
     }
 

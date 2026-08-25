@@ -376,7 +376,7 @@
             }
 
             if (acuerdos && acuerdos.length > 0) {
-              acuerdos.forEach(function(ac) { addAcuerdoRow(ac.descripcion, ac.responsable, formatDateISOJS(ac.fecha_cumplimiento)); });
+              acuerdos.forEach(function(ac) { addAcuerdoRow(ac.tipo || 'Acuerdo', ac.descripcion, ac.responsable, formatDateISOJS(ac.fecha_cumplimiento)); });
             } else {
               addAcuerdoRow();
             }
@@ -456,7 +456,8 @@
     renumberTable('tbodyOrden');
   }
 
-  function addAcuerdoRow(descripcion, responsable, fecha) {
+  function addAcuerdoRow(tipo, descripcion, responsable, fecha) {
+    if (tipo === undefined) tipo = 'Acuerdo';
     if (descripcion === undefined) descripcion = '';
     if (responsable === undefined) responsable = '';
     if (fecha === undefined) fecha = '';
@@ -465,12 +466,20 @@
     if (!tbody) return;
     const rowIdx = tbody.children.length + 1;
 
+    const optInfo = tipo === 'Informativo' ? 'selected' : '';
+    const optAcuerdo = tipo === 'Acuerdo' ? 'selected' : '';
+
     const tr = document.createElement('tr');
     tr.innerHTML = '<td class="text-center row-num">' + rowIdx + '</td>' +
+      '<td>' +
+        '<select class="form-select form-select-sm acuerdo-tipo" required>' +
+          '<option value="Acuerdo" ' + optAcuerdo + '>Acuerdo</option>' +
+          '<option value="Informativo" ' + optInfo + '>Informativo</option>' +
+        '</select>' +
+      '</td>' +
       '<td><input type="text" class="form-control form-control-sm acuerdo-desc" value="' + escapeHtml(descripcion) + '" placeholder="Descripción del acuerdo" required></td>' +
       '<td>' +
-        '<select class="form-select form-select-sm acuerdo-resp" required data-selected="' + escapeHtml(responsable) + '">' +
-          '<option value="">-- Seleccione --</option>' +
+        '<select class="form-select form-select-sm acuerdo-resp" multiple required data-selected="' + escapeHtml(responsable) + '" style="height: 65px;">' +
         '</select>' +
       '</td>' +
       '<td><input type="date" class="form-control form-control-sm acuerdo-fecha" value="' + escapeHtml(fecha) + '" required></td>' +
@@ -505,26 +514,41 @@
 
     const selectResps = document.querySelectorAll('#tbodyAcuerdos .acuerdo-resp');
     selectResps.forEach(function(select) {
-      const currentVal = select.value || select.getAttribute('data-selected') || '';
-      select.innerHTML = '<option value="">-- Seleccione --</option>';
+      const rawVal = select.getAttribute('data-selected') || '';
+      let selectedValues = [];
+      if (select.selectedOptions && select.selectedOptions.length > 0) {
+        selectedValues = Array.from(select.selectedOptions).map(function(o) { return o.value; });
+      } else if (rawVal) {
+        selectedValues = rawVal.split(',').map(function(s) { return s.trim(); });
+      }
+
+      select.innerHTML = '';
+
+      const optTodos = document.createElement('option');
+      optTodos.value = 'Todos';
+      optTodos.textContent = 'Todos';
+      if (selectedValues.includes('Todos')) optTodos.selected = true;
+      select.appendChild(optTodos);
 
       nombres.forEach(function(nombre) {
         const opt = document.createElement('option');
         opt.value = nombre;
         opt.textContent = nombre;
-        if (nombre === currentVal) {
+        if (selectedValues.includes(nombre)) {
           opt.selected = true;
         }
         select.appendChild(opt);
       });
 
-      if (currentVal && !nombres.includes(currentVal)) {
-        const opt = document.createElement('option');
-        opt.value = currentVal;
-        opt.textContent = currentVal;
-        opt.selected = true;
-        select.appendChild(opt);
-      }
+      selectedValues.forEach(function(val) {
+        if (val && val !== 'Todos' && !nombres.includes(val)) {
+          const opt = document.createElement('option');
+          opt.value = val;
+          opt.textContent = val;
+          opt.selected = true;
+          select.appendChild(opt);
+        }
+      });
     });
   }
 
@@ -560,9 +584,17 @@
 
     const acuerdos = [];
     document.querySelectorAll('#tbodyAcuerdos tr').forEach(function(tr) {
+      const selectResp = tr.querySelector('.acuerdo-resp');
+      let respArr = [];
+      if (selectResp && selectResp.selectedOptions) {
+        respArr = Array.from(selectResp.selectedOptions).map(function(o) { return o.value; });
+      }
+      const respStr = respArr.join(', ');
+
       acuerdos.push({
+        tipo: tr.querySelector('.acuerdo-tipo') ? tr.querySelector('.acuerdo-tipo').value : 'Acuerdo',
         descripcion: tr.querySelector('.acuerdo-desc').value,
-        responsable: tr.querySelector('.acuerdo-resp').value,
+        responsable: respStr,
         fecha_cumplimiento: tr.querySelector('.acuerdo-fecha').value,
         estado: 'Pendiente'
       });
