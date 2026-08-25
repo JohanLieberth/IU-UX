@@ -8,9 +8,6 @@
  * @returns {GoogleAppsScript.HTML.HtmlOutput}
  */
 function doGet(e) {
-  // Asegurar que la base de datos esté creada e inicializada
-  setupDatabase();
-
   const template = HtmlService.createTemplateFromFile('Index');
   return template.evaluate()
     .setTitle('Sistema de Minutas y Seguimiento de Acuerdos')
@@ -33,6 +30,7 @@ function include(filename) {
  */
 function getInitialData() {
   try {
+    setupDatabase();
     const proyectosRes = JSON.parse(obtenerProyectos());
     const minutasRes = JSON.parse(obtenerMinutas());
     const acuerdosRes = JSON.parse(obtenerAcuerdosConEstado());
