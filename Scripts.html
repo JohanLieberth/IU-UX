@@ -15,10 +15,28 @@
     refreshAppData();
   });
 
+  let loadingTimeout = null;
+
   // Mostrar U Ocultar Spinner de Carga
   function showLoading(show = true) {
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) overlay.style.display = show ? 'flex' : 'none';
+
+    if (loadingTimeout) {
+      clearTimeout(loadingTimeout);
+      loadingTimeout = null;
+    }
+
+    // Seguridad: Si después de 15 segundos sigue cargando, ocultar overlay para desbloquear la UI
+    if (show) {
+      loadingTimeout = setTimeout(() => {
+        const ov = document.getElementById('loadingOverlay');
+        if (ov && ov.style.display !== 'none') {
+          ov.style.display = 'none';
+          showToast('La operación tardó más de lo esperado. Se ha desbloqueado la pantalla.', false);
+        }
+      }, 15000);
+    }
   }
 
   // Notificaciones Toast (Bootstrap)
@@ -52,26 +70,48 @@
   // Cargar todos los datos del servidor
   function refreshAppData() {
     showLoading(true);
-    google.script.run
-      .withSuccessHandler(responseRaw => {
+    try {
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        console.warn('google.script.run no está disponible en este entorno.');
         showLoading(false);
-        const response = typeof responseRaw === 'string' ? JSON.parse(responseRaw) : responseRaw;
-        if (response.success) {
-          APP_DATA = response.data;
-          renderDashboard();
-          renderProyectosTable();
-          renderMinutasTable();
-          renderSeguimientoTable();
-          populateSelects();
-        } else {
-          showToast(response.message || 'Error al actualizar datos.', false);
-        }
-      })
-      .withFailureHandler(err => {
-        showLoading(false);
-        showToast('Error de conexión con el servidor: ' + err.message, false);
-      })
-      .getInitialData();
+        renderDashboard();
+        renderProyectosTable();
+        renderMinutasTable();
+        renderSeguimientoTable();
+        populateSelects();
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(responseRaw => {
+          showLoading(false);
+          try {
+            const response = typeof responseRaw === 'string' ? JSON.parse(responseRaw) : responseRaw;
+            if (response && response.success) {
+              APP_DATA = response.data || { proyectos: [], minutas: [], acuerdos: [] };
+              renderDashboard();
+              renderProyectosTable();
+              renderMinutasTable();
+              renderSeguimientoTable();
+              populateSelects();
+            } else {
+              showToast((response && response.message) || 'Error al actualizar datos.', false);
+            }
+          } catch (err) {
+            console.error('Error al procesar datos iniciales:', err);
+            showToast('Error al desplegar los datos: ' + err.message, false);
+          }
+        })
+        .withFailureHandler(err => {
+          showLoading(false);
+          showToast('Error de conexión con el servidor: ' + (err ? err.message : 'Desconocido'), false);
+        })
+        .getInitialData();
+    } catch (e) {
+      console.error('Error en refreshAppData:', e);
+      showLoading(false);
+      showToast('Error al iniciar la carga: ' + e.message, false);
+    }
   }
 
   // Navegación Vistas Sidebar
