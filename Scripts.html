@@ -472,12 +472,12 @@
     const tr = document.createElement('tr');
     tr.innerHTML = '<td class="text-center row-num">' + rowIdx + '</td>' +
       '<td>' +
-        '<select class="form-select form-select-sm acuerdo-tipo" required>' +
+        '<select class="form-select form-select-sm acuerdo-tipo" required onchange="handleTipoChange(this)">' +
           '<option value="Acuerdo" ' + optAcuerdo + '>Acuerdo</option>' +
           '<option value="Informativo" ' + optInfo + '>Informativo</option>' +
         '</select>' +
       '</td>' +
-      '<td><input type="text" class="form-control form-control-sm acuerdo-desc" value="' + escapeHtml(descripcion) + '" placeholder="Descripción del acuerdo" required></td>' +
+      '<td><input type="text" class="form-control form-control-sm acuerdo-desc" value="' + escapeHtml(descripcion) + '" placeholder="Descripción" required></td>' +
       '<td>' +
         '<select class="form-select form-select-sm acuerdo-resp" multiple required data-selected="' + escapeHtml(responsable) + '" style="height: 65px;">' +
         '</select>' +
@@ -488,6 +488,27 @@
     tbody.appendChild(tr);
     renumberTable('tbodyAcuerdos');
     syncResponsablesOptions();
+
+    const selectTipo = tr.querySelector('.acuerdo-tipo');
+    if (selectTipo) handleTipoChange(selectTipo);
+  }
+
+  function handleTipoChange(selectTipo) {
+    const tr = selectTipo.closest('tr');
+    if (!tr) return;
+    const inputFecha = tr.querySelector('.acuerdo-fecha');
+    if (!inputFecha) return;
+
+    if (selectTipo.value === 'Informativo') {
+      inputFecha.required = false;
+      inputFecha.disabled = true;
+      inputFecha.value = '';
+      inputFecha.classList.add('bg-light');
+    } else {
+      inputFecha.required = true;
+      inputFecha.disabled = false;
+      inputFecha.classList.remove('bg-light');
+    }
   }
 
   function removeRow(btn) {
