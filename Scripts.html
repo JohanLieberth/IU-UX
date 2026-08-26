@@ -685,31 +685,104 @@
       .generarDocumentoMinuta(idMinuta);
   }
 
-  function renderSeguimientoTable() {
+  let debounceFilterTimer = null;
+
+  function triggerDebouncedFilter() {
+    if (debounceFilterTimer) {
+      clearTimeout(debounceFilterTimer);
+    }
+    debounceFilterTimer = setTimeout(function() {
+      triggerFilterAcuerdos();
+    }, 300);
+  }
+
+  function getFiltrosSeguimientoUI() {
+    const elProj = document.getElementById('filterProyecto');
+    const elEstado = document.getElementById('filterEstado');
+    const elResp = document.getElementById('filterResponsable');
+    const elFechaInicio = document.getElementById('filterFechaInicio');
+    const elFechaFin = document.getElementById('filterFechaFin');
+    const elTexto = document.getElementById('filterTexto');
+
+    return {
+      id_proyecto: elProj ? elProj.value : '',
+      estado: elEstado ? elEstado.value : '',
+      responsable: elResp ? elResp.value : '',
+      fecha_inicio: elFechaInicio ? elFechaInicio.value : '',
+      fecha_fin: elFechaFin ? elFechaFin.value : '',
+      texto: elTexto ? elTexto.value : ''
+    };
+  }
+
+  function triggerFilterAcuerdos() {
+    const filtros = getFiltrosSeguimientoUI();
+    const tbody = document.querySelector('#tableSeguimiento tbody');
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Cargando acuerdos filtrados...</td></tr>';
+    }
+
     if (dtSeguimiento && typeof dtSeguimiento.destroy === 'function') {
       dtSeguimiento.destroy();
+      dtSeguimiento = null;
+    }
+
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+      renderAcuerdosFiltradosEnTabla(APP_DATA.acuerdos || []);
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(function(responseRaw) {
+        const response = typeof responseRaw === 'string' ? JSON.parse(responseRaw) : responseRaw;
+        if (response && response.success) {
+          renderAcuerdosFiltradosEnTabla(response.data || []);
+        } else {
+          showToast((response && response.message) || 'Error al filtrar acuerdos.', false);
+          renderAcuerdosFiltradosEnTabla([]);
+        }
+      })
+      .withFailureHandler(function(err) {
+        showToast('Error de conexión al filtrar: ' + (err ? err.message : 'Desconocido'), false);
+        renderAcuerdosFiltradosEnTabla([]);
+      })
+      .obtenerAcuerdosFiltrados(filtros);
+  }
+
+  function renderSeguimientoTable() {
+    triggerFilterAcuerdos();
+  }
+
+  function renderAcuerdosFiltradosEnTabla(acuerdosList) {
+    if (dtSeguimiento && typeof dtSeguimiento.destroy === 'function') {
+      dtSeguimiento.destroy();
+      dtSeguimiento = null;
     }
 
     const tbody = document.querySelector('#tableSeguimiento tbody');
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    APP_DATA.acuerdos.forEach(function(ac) {
+    if (!acuerdosList || acuerdosList.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No se encontraron acuerdos con los criterios seleccionados.</td></tr>';
+      return;
+    }
+
+    acuerdosList.forEach(function(ac, index) {
       const badgeClass = getBadgeClass(ac.estado_calculado);
       const motivo = ac.motivo_cancelacion ? '<br><small class="text-muted"><em>Motivo: ' + escapeHtml(ac.motivo_cancelacion) + '</em></small>' : '';
+      const tipoBadge = ac.tipo === 'Informativo' ? 'bg-info' : 'bg-primary';
 
-      tbody.innerHTML += '<tr data-proyecto="' + escapeHtml(ac.id_proyecto) + '" data-estado="' + escapeHtml(ac.estado_calculado) + '" data-responsable="' + escapeHtml(ac.responsable) + '" data-fecha="' + escapeHtml(formatDateISOJS(ac.fecha_cumplimiento)) + '">' +
-        '<td>' +
-          '<div class="fw-bold">' + escapeHtml(ac.nombre_proyecto) + '</div>' +
-          '<small class="text-muted">' + escapeHtml(ac.titulo_minuta) + '</small>' +
-        '</td>' +
+      tbody.innerHTML += '<tr>' +
+        '<td class="text-center fw-bold">' + (index + 1) + '</td>' +
         '<td>' + escapeHtml(ac.descripcion) + motivo + '</td>' +
+        '<td><span class="badge ' + tipoBadge + '">' + escapeHtml(ac.tipo || 'Acuerdo') + '</span></td>' +
         '<td><span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>' + escapeHtml(ac.responsable) + '</span></td>' +
         '<td>' + formatDateDisplayJS(ac.fecha_cumplimiento) + '</td>' +
         '<td><span class="badge ' + badgeClass + '">' + escapeHtml(ac.estado_calculado) + '</span></td>' +
+        '<td><div class="fw-bold">' + escapeHtml(ac.nombre_proyecto) + '</div><small class="text-muted">' + escapeHtml(ac.titulo_minuta) + '</small></td>' +
         '<td class="text-end">' +
           '<button class="btn btn-sm btn-outline-primary" onclick="openModalEstadoAcuerdo(\'' + escapeJs(ac.id_acuerdo) + '\', \'' + escapeJs(ac.estado_calculado) + '\', \'' + escapeJs(ac.motivo_cancelacion || '') + '\')">' +
-            '<i class="bi bi-arrow-repeat"></i> Cambiar Estado' +
+            '<i class="bi bi-arrow-repeat"></i> Cambiar' +
           '</button>' +
         '</td>' +
       '</tr>';
@@ -719,11 +792,10 @@
       dtSeguimiento = $('#tableSeguimiento').DataTable({
         language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
         pageLength: 15,
-        retrieve: true
+        retrieve: true,
+        searching: false
       });
     }
-
-    applyAcuerdosFilters();
   }
 
   function openModalEstadoAcuerdo(idAcuerdo, estadoActual, motivo) {
@@ -772,77 +844,6 @@
         showToast(err.message, false);
       })
       .actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivo);
-  }
-
-  function applyAcuerdosFilters() {
-    const elProj = document.getElementById('filterProyecto');
-    const elEstado = document.getElementById('filterEstado');
-    const elResp = document.getElementById('filterResponsable');
-    const elFechaFin = document.getElementById('filterFechaFin');
-
-    const projFilter = elProj ? elProj.value : '';
-    const estadoFilter = elEstado ? elEstado.value : '';
-    const respFilter = elResp ? elResp.value : '';
-    const fechaFinFilter = elFechaFin ? elFechaFin.value : '';
-
-    if (dtSeguimiento && typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
-      // Remover funciones de busqueda previas para evitar acumulacion
-      $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function(fn) {
-        return fn._name !== 'seguimientoFilter';
-      });
-
-      const filterFn = function(settings, data, dataIndex, rowData, rowNode) {
-        if (settings.nTable.id !== 'tableSeguimiento') return true;
-
-        let proj = '', estado = '', respStr = '', fecha = '';
-        if (rowNode) {
-          const node = $(rowNode);
-          proj = node.attr('data-proyecto') || '';
-          estado = node.attr('data-estado') || '';
-          respStr = node.attr('data-responsable') || '';
-          fecha = node.attr('data-fecha') || '';
-        }
-
-        if (projFilter && proj !== projFilter) return false;
-        if (estadoFilter && estado !== estadoFilter) return false;
-
-        if (respFilter) {
-          const respList = respStr.split(',').map(function(s) { return s.trim(); });
-          if (!respList.includes(respFilter) && !respList.includes('Todos')) {
-            return false;
-          }
-        }
-
-        if (fechaFinFilter && fecha && fecha > fechaFinFilter) return false;
-
-        return true;
-      };
-      filterFn._name = 'seguimientoFilter';
-
-      $.fn.dataTable.ext.search.push(filterFn);
-      dtSeguimiento.draw();
-    } else {
-      const rows = document.querySelectorAll('#tableSeguimiento tbody tr');
-      rows.forEach(function(tr) {
-        const proj = tr.getAttribute('data-proyecto') || '';
-        const estado = tr.getAttribute('data-estado') || '';
-        const respStr = tr.getAttribute('data-responsable') || '';
-        const fecha = tr.getAttribute('data-fecha') || '';
-
-        let show = true;
-        if (projFilter && proj !== projFilter) show = false;
-        if (estadoFilter && estado !== estadoFilter) show = false;
-        if (respFilter) {
-          const respList = respStr.split(',').map(function(s) { return s.trim(); });
-          if (!respList.includes(respFilter) && !respList.includes('Todos')) {
-            show = false;
-          }
-        }
-        if (fechaFinFilter && fecha && fecha > fechaFinFilter) show = false;
-
-        tr.style.display = show ? '' : 'none';
-      });
-    }
   }
 
   function populateSelects() {

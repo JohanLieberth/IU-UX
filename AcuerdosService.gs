@@ -34,7 +34,18 @@ function calcularEstadoAcuerdo(fechaCumplimiento, estadoActual) {
 }
 
 function obtenerAcuerdosConEstado() {
+  return obtenerAcuerdosFiltrados({});
+}
+
+/**
+ * Obtiene y filtra los acuerdos directamente desde la pestaña Acuerdos de DB_Sistema_Minutas_Seguimiento.
+ * @param {Object} filtros
+ * @returns {string} JSON
+ */
+function obtenerAcuerdosFiltrados(filtros) {
   try {
+    if (!filtros) filtros = {};
+
     const acuerdos = getSheetDataAsObjects('Acuerdos');
     const minutas = getSheetDataAsObjects('Minutas');
     const proyectos = getSheetDataAsObjects('Proyectos');
@@ -45,23 +56,65 @@ function obtenerAcuerdosConEstado() {
     const proyectosMap = {};
     proyectos.forEach(p => proyectosMap[p.id_proyecto] = p.nombre);
 
-    const result = acuerdos.map(ac => {
-      const minuta = minutasMap[ac.id_minuta] || {};
-      const nombreProyecto = proyectosMap[minuta.id_proyecto] || 'Sin Proyecto';
-      const estadoCalculado = calcularEstadoAcuerdo(ac.fecha_cumplimiento, ac.estado);
+    const fProyecto = (filtros.id_proyecto || '').toString().trim();
+    const fEstado = (filtros.estado || '').toString().trim();
+    const fResponsable = (filtros.responsable || '').toString().trim().toLowerCase();
+    const fFechaInicio = (filtros.fecha_inicio || '').toString().trim();
+    const fFechaFin = (filtros.fecha_fin || '').toString().trim();
+    const fTexto = (filtros.texto || '').toString().trim().toLowerCase();
 
-      return {
+    const result = [];
+
+    acuerdos.forEach(ac => {
+      const minuta = minutasMap[ac.id_minuta] || {};
+      const idProyecto = (minuta.id_proyecto || '').toString();
+      const nombreProyecto = proyectosMap[idProyecto] || 'Sin Proyecto';
+      const estadoCalculado = calcularEstadoAcuerdo(ac.fecha_cumplimiento, ac.estado);
+      const fechaISO = formatDateISO(ac.fecha_cumplimiento);
+
+      if (fProyecto && idProyecto !== fProyecto) {
+        return;
+      }
+
+      if (fEstado && estadoCalculado !== fEstado) {
+        return;
+      }
+
+      if (fResponsable) {
+        const respList = (ac.responsable || '').toString().toLowerCase().split(',').map(s => s.trim());
+        if (!respList.includes(fResponsable) && !respList.includes('todos')) {
+          return;
+        }
+      }
+
+      if (fFechaInicio && fechaISO && fechaISO < fFechaInicio) {
+        return;
+      }
+
+      if (fFechaFin && fechaISO && fechaISO > fFechaFin) {
+        return;
+      }
+
+      if (fTexto) {
+        const desc = (ac.descripcion || '').toString().toLowerCase();
+        if (!desc.includes(fTexto)) {
+          return;
+        }
+      }
+
+      result.push({
         ...ac,
+        tipo: ac.tipo || 'Acuerdo',
         titulo_minuta: minuta.titulo || 'Sin Minuta',
-        id_proyecto: minuta.id_proyecto || '',
+        id_proyecto: idProyecto,
         nombre_proyecto: nombreProyecto,
         estado_calculado: estadoCalculado
-      };
+      });
     });
 
-    return buildResponse(true, result, 'Acuerdos cargados exitosamente.');
+    return buildResponse(true, result, 'Acuerdos filtrados cargados exitosamente.');
   } catch (error) {
-    return buildResponse(false, null, 'Error al cargar acuerdos: ' + error.toString());
+    return buildResponse(false, null, 'Error al filtrar acuerdos: ' + error.toString());
   }
 }
 
