@@ -786,14 +786,22 @@
     const fechaFinFilter = elFechaFin ? elFechaFin.value : '';
 
     if (dtSeguimiento && typeof $ !== 'undefined' && $.fn && $.fn.dataTable) {
-      $.fn.dataTable.ext.search.push(function(settings, data, dataIndex, rowData, rowNode) {
+      // Remover funciones de busqueda previas para evitar acumulacion
+      $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(function(fn) {
+        return fn._name !== 'seguimientoFilter';
+      });
+
+      const filterFn = function(settings, data, dataIndex, rowData, rowNode) {
         if (settings.nTable.id !== 'tableSeguimiento') return true;
 
-        const node = $(rowNode);
-        const proj = node.attr('data-proyecto') || '';
-        const estado = node.attr('data-estado') || '';
-        const respStr = node.attr('data-responsable') || '';
-        const fecha = node.attr('data-fecha') || '';
+        let proj = '', estado = '', respStr = '', fecha = '';
+        if (rowNode) {
+          const node = $(rowNode);
+          proj = node.attr('data-proyecto') || '';
+          estado = node.attr('data-estado') || '';
+          respStr = node.attr('data-responsable') || '';
+          fecha = node.attr('data-fecha') || '';
+        }
 
         if (projFilter && proj !== projFilter) return false;
         if (estadoFilter && estado !== estadoFilter) return false;
@@ -808,10 +816,11 @@
         if (fechaFinFilter && fecha && fecha > fechaFinFilter) return false;
 
         return true;
-      });
+      };
+      filterFn._name = 'seguimientoFilter';
 
+      $.fn.dataTable.ext.search.push(filterFn);
       dtSeguimiento.draw();
-      $.fn.dataTable.ext.search.pop();
     } else {
       const rows = document.querySelectorAll('#tableSeguimiento tbody tr');
       rows.forEach(function(tr) {
