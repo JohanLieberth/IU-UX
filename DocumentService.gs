@@ -35,8 +35,8 @@ function generarDocumentoMinuta(idMinuta) {
     body.setMarginLeft(54);
     body.setMarginRight(54);
 
-    // Configurar Fuente Century Gothic y Tamaño Principal 10
-    body.editAsText().setFontFamily('Century Gothic').setFontSize(10);
+    // Configurar Fuente Century Gothic, Color Negro y Tamaño Principal 10
+    body.editAsText().setFontFamily('Century Gothic').setFontSize(10).setForegroundColor('#000000');
 
     // -------------------------------------------------------------
     // ENCABEZADO OFICIAL (LOGO IZQUIERDA Y TEXTO CENTRADO)
@@ -91,27 +91,26 @@ function generarDocumentoMinuta(idMinuta) {
       const p = cellRight.appendParagraph(lineText);
       p.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
       p.setFontFamily('Century Gothic');
+      p.setFontSize(10);
+      p.setForegroundColor('#000000');
       if (idx === 0 || idx === headerTextLines.length - 1) {
-        p.setFontSize(9).setBold(true);
-      } else {
-        p.setFontSize(8);
+        p.setBold(true);
       }
-      p.setForegroundColor('#1e293b');
     });
 
     if (cellRight.getNumChildren() > headerTextLines.length && cellRight.getChild(0).getType() === DocumentApp.ElementType.PARAGRAPH) {
       cellRight.removeChild(cellRight.getChild(0));
     }
 
-    const primaryColor = '#1e3a8a';
+    const textColor = '#000000';
 
     const headerTitle = body.appendParagraph(docTitle.toUpperCase());
     headerTitle.setHeading(DocumentApp.ParagraphHeading.HEADING1);
     headerTitle.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
     headerTitle.setFontFamily('Century Gothic');
-    headerTitle.setFontSize(14);
+    headerTitle.setFontSize(12);
     headerTitle.setBold(true);
-    headerTitle.setForegroundColor(primaryColor);
+    headerTitle.setForegroundColor(textColor);
 
     body.appendParagraph('');
 
@@ -139,7 +138,7 @@ function generarDocumentoMinuta(idMinuta) {
     const sec1Heading = body.appendParagraph('2. LISTA DE ASISTENCIA');
     sec1Heading.setHeading(DocumentApp.ParagraphHeading.HEADING2);
     sec1Heading.setFontFamily('Century Gothic');
-    sec1Heading.setFontSize(11).setBold(true).setForegroundColor(primaryColor);
+    sec1Heading.setFontSize(10).setBold(true).setForegroundColor(textColor);
 
     const asistenciaTableData = [
       ['No.', 'Nombre', 'Dependencia', 'AP', 'AT', 'NA']
@@ -168,7 +167,7 @@ function generarDocumentoMinuta(idMinuta) {
     const sec2Heading = body.appendParagraph('3. ORDEN DEL DÍA');
     sec2Heading.setHeading(DocumentApp.ParagraphHeading.HEADING2);
     sec2Heading.setFontFamily('Century Gothic');
-    sec2Heading.setFontSize(11).setBold(true).setForegroundColor(primaryColor);
+    sec2Heading.setFontSize(10).setBold(true).setForegroundColor(textColor);
 
     const ordenTableData = [
       ['No.', 'Descripción']
@@ -193,7 +192,7 @@ function generarDocumentoMinuta(idMinuta) {
     const sec3Heading = body.appendParagraph('4. ACCIONES Y ACUERDOS');
     sec3Heading.setHeading(DocumentApp.ParagraphHeading.HEADING2);
     sec3Heading.setFontFamily('Century Gothic');
-    sec3Heading.setFontSize(11).setBold(true).setForegroundColor(primaryColor);
+    sec3Heading.setFontSize(10).setBold(true).setForegroundColor(textColor);
 
     const acuerdosTableData = [
       ['No.', 'Descripción', 'Responsable', 'Fecha de Cumplimiento']
@@ -220,9 +219,9 @@ function generarDocumentoMinuta(idMinuta) {
     const sec4Heading = body.appendParagraph('5. ÁREA DE FIRMAS');
     sec4Heading.setHeading(DocumentApp.ParagraphHeading.HEADING2);
     sec4Heading.setFontFamily('Century Gothic');
-    sec4Heading.setFontSize(11).setBold(true).setForegroundColor(primaryColor);
+    sec4Heading.setFontSize(10).setBold(true).setForegroundColor(textColor);
 
-    body.appendParagraph('En fe de conformidad de los puntos tratados y acuerdos establecidos en la presente minuta, firman los asistentes:').setFontFamily('Century Gothic').setFontSize(9).setItalic(true);
+    body.appendParagraph('En fe de conformidad de los puntos tratados y acuerdos establecidos en la presente minuta, firman los asistentes:').setFontFamily('Century Gothic').setFontSize(10).setForegroundColor(textColor).setItalic(true);
     body.appendParagraph('');
 
     const participantesParaFirma = (asistencia && asistencia.length > 0)
@@ -262,8 +261,9 @@ function generarDocumentoMinuta(idMinuta) {
     const footer = doc.addFooter();
     const footerPara = footer.appendParagraph('Documento generado automáticamente el ' + formatDateDisplay(new Date()) + ' - Sistema de Minutas');
     footerPara.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
-    footerPara.setFontSize(8);
-    footerPara.setForegroundColor('#64748b');
+    footerPara.setFontFamily('Century Gothic');
+    footerPara.setFontSize(10);
+    footerPara.setForegroundColor('#000000');
 
     doc.saveAndClose();
 
@@ -316,8 +316,8 @@ function formatTableStandard(table, colWidths, centerAlignColumns) {
       const child = cell.getChild(p);
       if (child.getType() === DocumentApp.ElementType.PARAGRAPH) {
         const para = child.asParagraph();
-          para.setFontFamily('Century Gothic');
-        para.setFontSize(9);
+        para.setFontFamily('Century Gothic');
+        para.setFontSize(10);
         para.setBold(true);
         para.setForegroundColor('#FFFFFF');
         para.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
@@ -339,8 +339,8 @@ function formatTableStandard(table, colWidths, centerAlignColumns) {
         if (child.getType() === DocumentApp.ElementType.PARAGRAPH) {
           const para = child.asParagraph();
           para.setFontFamily('Century Gothic');
-          para.setFontSize(9);
-          para.setForegroundColor('#334155');
+          para.setFontSize(10);
+          para.setForegroundColor('#000000');
           if (c === 0 || (centerAlignColumns && c >= 3)) {
             para.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
           } else {
