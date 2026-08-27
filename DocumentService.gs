@@ -35,13 +35,75 @@ function generarDocumentoMinuta(idMinuta) {
     body.setMarginLeft(54);
     body.setMarginRight(54);
 
+    // Configurar Fuente Poppins y Tamaño Principal 10
+    body.editAsText().setFontFamily('Poppins').setFontSize(10);
+
+    // -------------------------------------------------------------
+    // ENCABEZADO OFICIAL (TEXTO CENTRADO Y LOGO DERECHA)
+    // -------------------------------------------------------------
+    const header = doc.addHeader();
+    const headerTable = header.appendTable([
+      ['', '']
+    ]);
+    headerTable.setBorderColor('#FFFFFF'); // Ocultar bordes de la tabla de encabezado
+
+    const rowHeader = headerTable.getRow(0);
+    const cellLeft = rowHeader.getCell(0).setWidth(380);
+    const cellRight = rowHeader.getCell(1).setWidth(120);
+
+    // Texto Centrado en Encabezado
+    cellLeft.setText('');
+    const headerTextLines = [
+      'MUNICIPIO DE MÉRIDA, YUCATÁN',
+      'Coordinación General de Buen Gobierno',
+      'Dirección de Administración',
+      'Subdirección de Mejora Regulatoria',
+      'Departamento de Calidad y Mejora Continua',
+      'MINUTA DE TRABAJO'
+    ];
+
+    headerTextLines.forEach((lineText, idx) => {
+      const p = cellLeft.appendParagraph(lineText);
+      p.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+      p.setFontFamily('Poppins');
+      if (idx === 0 || idx === headerTextLines.length - 1) {
+        p.setFontSize(9).setBold(true);
+      } else {
+        p.setFontSize(8);
+      }
+      p.setForegroundColor('#1e293b');
+    });
+
+    // Eliminar primer párrafo vacío en celda izquierda
+    if (cellLeft.getNumChildren() > headerTextLines.length && cellLeft.getChild(0).getType() === DocumentApp.ElementType.PARAGRAPH) {
+      cellLeft.removeChild(cellLeft.getChild(0));
+    }
+
+    // Logo a la derecha del Encabezado
+    cellRight.setText('');
+    try {
+      const logoFile = DriveApp.getFileById('1nVNJIP8-jIE89-Q8ZV3HWZATJPnLRMwc');
+      const logoBlob = logoFile.getBlob();
+      const pLogo = cellRight.appendParagraph('');
+      pLogo.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+      const img = pLogo.appendInlineImage(logoBlob);
+      // Redimensionar proporcionalmente
+      img.setWidth(100);
+      img.setHeight(40);
+      if (cellRight.getNumChildren() > 1 && cellRight.getChild(0).getType() === DocumentApp.ElementType.PARAGRAPH) {
+        cellRight.removeChild(cellRight.getChild(0));
+      }
+    } catch (e) {
+      Logger.log('No se pudo cargar la imagen del logo en el encabezado: ' + e.toString());
+    }
+
     const primaryColor = '#1e3a8a';
 
     const headerTitle = body.appendParagraph(docTitle.toUpperCase());
     headerTitle.setHeading(DocumentApp.ParagraphHeading.HEADING1);
     headerTitle.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    headerTitle.setFontFamily('Arial');
-    headerTitle.setFontSize(16);
+    headerTitle.setFontFamily('Poppins');
+    headerTitle.setFontSize(14);
     headerTitle.setBold(true);
     headerTitle.setForegroundColor(primaryColor);
 
@@ -70,7 +132,8 @@ function generarDocumentoMinuta(idMinuta) {
 
     const sec1Heading = body.appendParagraph('2. LISTA DE ASISTENCIA');
     sec1Heading.setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    sec1Heading.setFontSize(12).setBold(true).setForegroundColor(primaryColor);
+    sec1Heading.setFontFamily('Poppins');
+    sec1Heading.setFontSize(11).setBold(true).setForegroundColor(primaryColor);
 
     const asistenciaTableData = [
       ['No.', 'Nombre', 'Dependencia', 'AP', 'AT', 'NA']
@@ -98,7 +161,8 @@ function generarDocumentoMinuta(idMinuta) {
 
     const sec2Heading = body.appendParagraph('3. ORDEN DEL DÍA');
     sec2Heading.setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    sec2Heading.setFontSize(12).setBold(true).setForegroundColor(primaryColor);
+    sec2Heading.setFontFamily('Poppins');
+    sec2Heading.setFontSize(11).setBold(true).setForegroundColor(primaryColor);
 
     const ordenTableData = [
       ['No.', 'Descripción']
@@ -122,7 +186,8 @@ function generarDocumentoMinuta(idMinuta) {
 
     const sec3Heading = body.appendParagraph('4. ACCIONES Y ACUERDOS');
     sec3Heading.setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    sec3Heading.setFontSize(12).setBold(true).setForegroundColor(primaryColor);
+    sec3Heading.setFontFamily('Poppins');
+    sec3Heading.setFontSize(11).setBold(true).setForegroundColor(primaryColor);
 
     const acuerdosTableData = [
       ['No.', 'Descripción', 'Responsable', 'Fecha de Cumplimiento']
@@ -148,9 +213,10 @@ function generarDocumentoMinuta(idMinuta) {
 
     const sec4Heading = body.appendParagraph('5. ÁREA DE FIRMAS');
     sec4Heading.setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    sec4Heading.setFontSize(12).setBold(true).setForegroundColor(primaryColor);
+    sec4Heading.setFontFamily('Poppins');
+    sec4Heading.setFontSize(11).setBold(true).setForegroundColor(primaryColor);
 
-    body.appendParagraph('En fe de conformidad de los puntos tratados y acuerdos establecidos en la presente minuta, firman los asistentes:').setFontSize(10).setItalic(true);
+    body.appendParagraph('En fe de conformidad de los puntos tratados y acuerdos establecidos en la presente minuta, firman los asistentes:').setFontFamily('Poppins').setFontSize(9).setItalic(true);
     body.appendParagraph('');
 
     const participantesParaFirma = (asistencia && asistencia.length > 0)
@@ -244,7 +310,7 @@ function formatTableStandard(table, colWidths, centerAlignColumns) {
       const child = cell.getChild(p);
       if (child.getType() === DocumentApp.ElementType.PARAGRAPH) {
         const para = child.asParagraph();
-        para.setFontFamily('Arial');
+          para.setFontFamily('Poppins');
         para.setFontSize(9);
         para.setBold(true);
         para.setForegroundColor('#FFFFFF');
@@ -266,7 +332,7 @@ function formatTableStandard(table, colWidths, centerAlignColumns) {
         const child = cell.getChild(p);
         if (child.getType() === DocumentApp.ElementType.PARAGRAPH) {
           const para = child.asParagraph();
-          para.setFontFamily('Arial');
+          para.setFontFamily('Poppins');
           para.setFontSize(9);
           para.setForegroundColor('#334155');
           if (c === 0 || (centerAlignColumns && c >= 3)) {
