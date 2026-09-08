@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Validación de CURP</title>
+  <style>
+    /* ==========================================================================
+       ESTILOS MODERNOS Y RESPONSIVOS (CSS3)
+       ========================================================================== */
+    :root {
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --success-bg: #dcfce7;
+      --success-text: #15803d;
+      --success-border: #86efac;
+      --error-bg: #fee2e2;
+      --error-text: #b91c1c;
+      --error-border: #fca5a5;
+      --warning-bg: #fef3c7;
+      --warning-text: #b45309;
+      --warning-border: #fde68a;
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+      background: var(--card-bg);
+      padding: 32px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border-color);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 1rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      outline: none;
+      transition: all 0.2s ease;
+      background-color: #ffffff;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .char-counter {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      background-color: var(--primary-color);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-submit:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    /* Indicador de carga / Spinner */
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #ffffff;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Área de Resultados */
+    .result-container {
+      margin-top: 24px;
+      padding: 18px;
+      border-radius: 8px;
+      font-size: 0.98rem;
+      line-height: 1.5;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-success {
+      background-color: var(--success-bg);
+      color: var(--success-text);
+      border: 1px solid var(--success-border);
+    }
+
+    .result-not-found {
+      background-color: var(--error-bg);
+      color: var(--error-text);
+      border: 1px solid var(--error-border);
+    }
+
+    .result-error {
+      background-color: var(--error-bg);
+      color: var(--error-text);
+      border: 1px solid var(--error-border);
+    }
+
+    .result-warning {
+      background-color: var(--warning-bg);
+      color: var(--warning-text);
+      border: 1px solid var(--warning-border);
+    }
+
+    .result-title {
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .footer-note {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>Validación de CURP</h1>
+      <p>Ingrese la Clave Única de Registro de Población para verificar su existencia en el sistema público.</p>
+    </div>
+
+    <form id="curpForm" onsubmit="event.preventDefault(); procesarConsulta();">
+      <div class="form-group">
+        <label for="curpInput">CURP (18 caracteres)</label>
+        <div class="input-wrapper">
+          <input
+            type="text"
+            id="curpInput"
+            name="curp"
+            maxlength="18"
+            placeholder="EJ: ABCD123456HDFRXX01"
+            autocomplete="off"
+            oninput="actualizarContador(this)"
+          >
+        </div>
+        <div class="char-counter" id="charCounter">0 / 18 caracteres</div>
+      </div>
+
+      <button type="submit" id="btnValidar" class="btn-submit">
+        <span id="spinnerText" class="spinner hidden"></span>
+        <span id="btnText">Validar CURP</span>
+      </button>
+    </form>
+
+    <!-- Área de resultados -->
+    <div id="resultadoArea" class="hidden"></div>
+
+    <div class="footer-note">
+      Sistema de Consulta vía Web Scraping en Google Apps Script
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       LÓGICA CLIENTE (JAVASCRIPT ES6)
+       ========================================================================== */
+
+    // Constante de Expresión Regular para validación local en el frontend
+    const REGEX_CURP_FRONT = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/i;
+
+    /**
+     * Actualiza en tiempo real el contador de caracteres del campo CURP.
+     */
+    function actualizarContador(input) {
+      input.value = input.value.toUpperCase();
+      const contador = document.getElementById('charCounter');
+      contador.textContent = `${input.value.length} / 18 caracteres`;
+
+      if (input.value.length === 18) {
+        contador.style.color = '#15803d';
+        contador.style.fontWeight = 'bold';
+      } else {
+        contador.style.color = 'var(--text-muted)';
+        contador.style.fontWeight = 'normal';
+      }
+    }
+
+    /**
+     * Valida el formato y la longitud de la CURP localmente en el cliente.
+     */
+    function validarFormatoLocal(curp) {
+      if (!curp || curp.trim() === '') {
+        return { esValido: false, mensaje: 'Por favor, ingrese una CURP.' };
+      }
+
+      const curpLimpia = curp.trim().toUpperCase();
+
+      if (curpLimpia.length !== 18) {
+        return {
+          esValido: false,
+          mensaje: `La CURP debe tener exactamente 18 caracteres. Actualmente tiene ${curpLimpia.length}.`
+        };
+      }
+
+      if (!REGEX_CURP_FRONT.test(curpLimpia)) {
+        return {
+          esValido: false,
+          mensaje: 'El formato de la CURP es inválido. Verifique las letras, números y estructura general.'
+        };
+      }
+
+      return { esValido: true, curp: curpLimpia };
+    }
+
+    /**
+     * Controla el estado de carga del botón y el formulario.
+     */
+    function setCargando(cargando) {
+      const btn = document.getElementById('btnValidar');
+      const btnText = document.getElementById('btnText');
+      const spinner = document.getElementById('spinnerText');
+      const input = document.getElementById('curpInput');
+
+      if (cargando) {
+        btn.disabled = true;
+        input.disabled = true;
+        spinner.classList.remove('hidden');
+        btnText.textContent = 'Consultando...';
+      } else {
+        btn.disabled = false;
+        input.disabled = false;
+        spinner.classList.add('hidden');
+        btnText.textContent = 'Validar CURP';
+      }
+    }
+
+    /**
+     * Muestra un mensaje en el área de resultados.
+     */
+    function mostrarResultado(claseEstilo, titulo, detalle = '') {
+      const area = document.getElementById('resultadoArea');
+      area.className = `result-container ${claseEstilo}`;
+      area.innerHTML = `
+        <div class="result-title">${titulo}</div>
+        ${detalle ? `<div style="margin-top: 6px;">${detalle}</div>` : ''}
+      `;
+      area.classList.remove('hidden');
+    }
+
+    /**
+     * Oculta el área de resultados.
+     */
+    function ocultarResultado() {
+      const area = document.getElementById('resultadoArea');
+      area.classList.add('hidden');
+      area.innerHTML = '';
+    }
+
+    /**
+     * Función principal que se ejecuta al presionar "Validar CURP".
+     */
+    function procesarConsulta() {
+      ocultarResultado();
+
+      const inputVal = document.getElementById('curpInput').value;
+
+      // 1. Validar formato previo en el cliente
+      const validacion = validarFormatoLocal(inputVal);
+
+      if (!validacion.esValido) {
+        mostrarResultado('result-error', '⚠️ Error de Formato', validacion.mensaje);
+        return;
+      }
+
+      // 2. Iniciar estado de carga
+      setCargando(true);
+
+      // 3. Ejecutar llamada asíncrona al backend mediante google.script.run
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(onExitoBackend)
+          .withFailureHandler(onErrorBackend)
+          .validarCurpEnServicio(validacion.curp);
+      } else {
+        // Modo de respaldo para pruebas fuera de Google Apps Script (local mock)
+        console.warn('google.script.run no disponible. Ejecutando simulación local.');
+        setTimeout(() => {
+          setCargando(false);
+          mostrarResultado('result-success', '✅ CURP encontrada', `Prueba local simulada para ${validacion.curp}`);
+        }, 1500);
+      }
+    }
+
+    /**
+     * Callback de éxito de la llamada a google.script.run.
+     */
+    function onExitoBackend(respuesta) {
+      setCargando(false);
+
+      if (!respuesta) {
+        mostrarResultado('result-error', '❌ Error en la Consulta', 'No se recibió respuesta del servidor.');
+        return;
+      }
+
+      if (respuesta.exito) {
+        if (respuesta.existe) {
+          mostrarResultado('result-success', '✅ CURP encontrada', `La CURP <strong>${respuesta.curp}</strong> existe y fue validada en el registro.`);
+        } else {
+          mostrarResultado('result-not-found', '❌ CURP no encontrada', `La CURP <strong>${respuesta.curp}</strong> no existe o no se encuentra registrada.`);
+        }
+      } else {
+        // Manejo estructurado de tipos de error devueltos por el backend
+        switch (respuesta.tipoError) {
+          case 'FORMATO_INVALIDO':
+            mostrarResultado('result-error', '⚠️ Formato Incorrecto', respuesta.mensaje);
+            break;
+          case 'TIMEOUT':
+            mostrarResultado('result-warning', '⏳ Tiempo de Espera Agotado', respuesta.mensaje);
+            break;
+          case 'SITIO_NO_DISPONIBLE':
+            mostrarResultado('result-warning', '🌐 Sitio No Disponible', respuesta.mensaje);
+            break;
+          case 'ERROR_CONEXION':
+            mostrarResultado('result-warning', '🔌 Error de Conexión', respuesta.mensaje);
+            break;
+          case 'ESTRUCTURA_CAMBIADA':
+            mostrarResultado('result-warning', '⚠️ Cambio de Estructura HTML', respuesta.mensaje);
+            break;
+          default:
+            mostrarResultado('result-error', '❌ Error en el Servidor', respuesta.mensaje || 'Ocurrió un error al procesar la solicitud.');
+        }
+      }
+    }
+
+    /**
+     * Callback de fallo de la llamada a google.script.run (excepciones no capturadas en GS).
+     */
+    function onErrorBackend(error) {
+      setCargando(false);
+      const msg = error && error.message ? error.message : error.toString();
+      mostrarResultado('result-error', '❌ Error de Ejecución', `Error en la llamada del script: ${msg}`);
+    }
+  </script>
+</body>
+</html>
