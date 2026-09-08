@@ -96,11 +96,11 @@ function validarFormatoCurp(curp) {
 
 
 // ==============================================================================
-// LOGICA PRINCIPAL DE WEB SCRAPING
+// LOGICA PRINCIPAL DE WEB SCRAPING Y CONSULTA DE API
 // ==============================================================================
 
 /**
- * Realiza la consulta web mediante UrlFetchApp y analiza la respuesta HTML
+ * Realiza la consulta web mediante UrlFetchApp y analiza la respuesta HTML/JSON
  * para verificar la existencia de la CURP solicitada.
  *
  * @param {string} curpIngresada - CURP capturada por el usuario en el frontend.
@@ -126,14 +126,12 @@ function validarCurpEnServicio(curpIngresada) {
     followRedirects: true,
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/json,*/*;q=0.8',
       'Accept-Language': 'es-MX,es;q=0.9,en;q=0.8'
     }
   };
 
   try {
-    // Definir la URL de consulta dinámica si el sitio requiere parámetros GET
-    // En caso de consultas directas, se agrega el parámetro o slug según corresponda.
     let urlConParametros = URL_CONSULTA;
     if (!urlConParametros.includes('?')) {
       urlConParametros += `?curp=${encodeURIComponent(curp)}`;
@@ -145,6 +143,11 @@ function validarCurpEnServicio(curpIngresada) {
     const respuesta = UrlFetchApp.fetch(urlConParametros, opcionesNavegacion);
     const codigoEstado = respuesta.getResponseCode();
     const htmlContenido = respuesta.getContentText();
+
+    // REGISTROS DE DEPURACIÓN (Logger.log temporales requeridos)
+    Logger.log("Código de respuesta HTTP: " + codigoEstado);
+    Logger.log("URL final consultada: " + urlConParametros);
+    Logger.log("Primeros 1000 caracteres de la respuesta recibida:\n" + (htmlContenido ? htmlContenido.substring(0, 1000) : "Vacio"));
 
     // 4. Manejo de errores HTTP de servidor/sitio no disponible
     if (codigoEstado >= 500) {
@@ -163,7 +166,7 @@ function validarCurpEnServicio(curpIngresada) {
       };
     }
 
-    // 5. Analizar el HTML mediante técnicas de parsing y Expresiones Regulares
+    // 5. Analizar la respuesta mediante técnicas de parsing adaptadas a HTML o JSON
     return analizarRespuestaHtml(htmlContenido, curp);
 
   } catch (error) {
@@ -193,35 +196,50 @@ function validarCurpEnServicio(curpIngresada) {
 }
 
 /**
- * Función auxiliar para parsear el contenido HTML obtenido del scraping.
- * Utiliza heurísticas y expresiones regulares para determinar la presencia de la CURP.
+ * Función auxiliar para parsear el contenido obtenido del scraping (HTML o JSON).
+ * Adapta la extracción a la estructura real de la respuesta.
  *
- * @param {string} html - Contenido HTML completo devuelto por el servidor remoto.
+ * @param {string} contenido - Contenido HTML o JSON devuelto por el servidor remoto.
  * @param {string} curp - CURP consultada.
- * @returns {Object} Resultado indicando si existe o no la CURP o si la estructura cambió.
+ * @returns {Object} Resultado indicando si existe o no la CURP.
  */
-function analizarRespuestaHtml(html, curp) {
-  if (!html || html.trim() === '') {
+function analizarRespuestaHtml(contenido, curp) {
+  if (!contenido || contenido.trim() === '') {
     return {
       exito: false,
       tipoError: 'ESTRUCTURA_CAMBIADA',
-      mensaje: 'El sitio remoto devolvió un contenido HTML vacío.'
+      mensaje: 'El sitio remoto devolvió un contenido vacío.'
     };
   }
 
-  // Patrones para detectar si la CURP fue encontrada
-  const patronesEncontrado = [
-    new RegExp(`curp[\\s\\S]*?${curp}`, 'i'),
-    new RegExp(`${curp}[\\s\\S]*?(registrada|encontrada|válida|valida|datos del ciudadano|curp confirmada)`, 'i'),
-    /datos del ciudadano/i,
-    /renapo/i,
-    /resultado de la consulta/i,
-    /curp\s*registrada/i,
-    new RegExp(`class=["'][^"']*resultado[^"']*["']`, 'i'),
-    new RegExp(`id=["'][^"']*datos-personales[^"']*["']`, 'i')
-  ];
+  // 1. Intentar parsing JSON (en caso de que la respuesta sea una API REST o JSON)
+  try {
+    const jsonRes = JSON.parse(contenido);
+    if (jsonRes) {
+      Logger.log("Estructura real utilizada: Respuesta en formato JSON. Código: " + jsonRes.codigo);
+      if (jsonRes.codigo === "01" || (jsonRes.registros && jsonRes.registros.length > 0)) {
+        return {
+          exito: true,
+          existe: true,
+          curp: curp,
+          mensaje: '✅ CURP encontrada'
+        };
+      } else if (jsonRes.codigo === "02" || jsonRes.codigo === "03" || (jsonRes.mensaje && /no (se )?encontr/i.test(jsonRes.mensaje))) {
+        return {
+          exito: true,
+          existe: false,
+          curp: curp,
+          mensaje: '❌ CURP no encontrada en los registros.'
+        };
+      }
+    }
+  } catch (e) {
+    // Si no es JSON, continuar con el análisis del documento HTML
+  }
 
-  // Patrones para detectar explícitamente que NO existe la CURP
+  Logger.log("Estructura real utilizada: Respuesta en formato HTML.");
+
+  // 2. Patrones explícitos para detectar si NO existe la CURP
   const patronesNoEncontrado = [
     /no se encontr[óo] información/i,
     /curp no existe/i,
@@ -229,12 +247,12 @@ function analizarRespuestaHtml(html, curp) {
     /no existe registro/i,
     /no se encontraron resultados/i,
     /sin registros/i,
-    /curp no registrada/i
+    /curp no registrada/i,
+    /no encontrada/i
   ];
 
-  // Evaluar coincidencias explícitas de "No encontrado"
   for (let patron of patronesNoEncontrado) {
-    if (patron.test(html)) {
+    if (patron.test(contenido)) {
       return {
         exito: true,
         existe: false,
@@ -244,8 +262,8 @@ function analizarRespuestaHtml(html, curp) {
     }
   }
 
-  // Evaluar si contiene la CURP solicitada en la respuesta
-  if (html.toUpperCase().includes(curp.toUpperCase())) {
+  // 3. Evaluar si la CURP ingresada o confirmación explícita de datos existe en el cuerpo HTML
+  if (contenido.toUpperCase().includes(curp.toUpperCase())) {
     return {
       exito: true,
       existe: true,
@@ -254,24 +272,30 @@ function analizarRespuestaHtml(html, curp) {
     };
   }
 
-  // Evaluar otros patrones de éxito en la respuesta
-  let coincidenciasExito = 0;
+  // 4. Patrones de éxito de coincidencia de estructura HTML (RENAPO / Trámite CURP)
+  const patronesEncontrado = [
+    new RegExp(`curp[\\s\\S]*?${curp}`, 'i'),
+    new RegExp(`${curp}[\\s\\S]*?(registrada|encontrada|válida|valida|datos del ciudadano|curp confirmada)`, 'i'),
+    /datos del ciudadano/i,
+    /resultado de la consulta/i,
+    /curp\s*registrada/i,
+    /tramite-curp/i,
+    /tramite-result/i,
+    /renapo/i
+  ];
+
   for (let patron of patronesEncontrado) {
-    if (patron.test(html)) {
-      coincidenciasExito++;
+    if (patron.test(contenido)) {
+      return {
+        exito: true,
+        existe: true,
+        curp: curp,
+        mensaje: '✅ CURP encontrada'
+      };
     }
   }
 
-  if (coincidenciasExito >= 1) {
-    return {
-      exito: true,
-      existe: true,
-      curp: curp,
-      mensaje: '✅ CURP encontrada'
-    };
-  }
-
-  // Si no coincide con ningún patrón conocido, es posible que la estructura haya cambiado
+  // 5. Si ninguna regla anterior determinó el resultado, reportar cambio de estructura
   return {
     exito: false,
     tipoError: 'ESTRUCTURA_CAMBIADA',
