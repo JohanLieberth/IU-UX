@@ -4,8 +4,8 @@
  * ==============================================================================
  *
  * Este archivo contiene la lógica backend del servidor (Google Apps Script)
- * encargada de servir la interfaz Web App y realizar la consulta de scraping
- * para validar la existencia de una CURP.
+ * encargada de consultar el servicio API REST en formato JSON para validar
+ * la existencia de una CURP.
  */
 
 // ==============================================================================
@@ -13,10 +13,9 @@
 // ==============================================================================
 
 /**
- * URL del sitio público fuente para la consulta de CURP.
- * Puede ser modificada según el sitio o API pública a consultar.
+ * URL del servicio API REST oficial para la consulta directa de CURP.
  */
-const URL_CONSULTA = "https://www.gob.mx/curp/";
+const URL_CONSULTA = "https://www.gob.mx/v1/renapoCURP/consulta";
 
 /**
  * Expresión regular estándar para la validación del formato oficial de la CURP mexicana.
@@ -96,11 +95,11 @@ function validarFormatoCurp(curp) {
 
 
 // ==============================================================================
-// LOGICA PRINCIPAL DE WEB SCRAPING Y CONSULTA DE API
+// LOGICA PRINCIPAL DE CONSULTA A SERVICIO API REST (JSON)
 // ==============================================================================
 
 /**
- * Realiza la consulta web mediante UrlFetchApp y analiza la respuesta HTML/JSON
+ * Realiza la consulta directa al servicio API REST en formato JSON mediante UrlFetchApp
  * para verificar la existencia de la CURP solicitada.
  *
  * @param {string} curpIngresada - CURP capturada por el usuario en el frontend.
@@ -119,71 +118,77 @@ function validarCurpEnServicio(curpIngresada) {
 
   const curp = validacion.curpLimpia;
 
-  // 2. Configuración de opciones para la petición HTTP
+  // 2. Configuración de la petición POST con headers JSON requeridos por el servicio
+  const payload = {
+    curp: curp,
+    tipoBusqueda: "curp"
+  };
+
   const opcionesNavegacion = {
-    method: 'get',
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
     muteHttpExceptions: true,
-    followRedirects: true,
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/json,*/*;q=0.8',
-      'Accept-Language': 'es-MX,es;q=0.9,en;q=0.8'
+      'Accept': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
   };
 
   try {
-    let urlConParametros = URL_CONSULTA;
-    if (!urlConParametros.includes('?')) {
-      urlConParametros += `?curp=${encodeURIComponent(curp)}`;
-    } else {
-      urlConParametros += `&curp=${encodeURIComponent(curp)}`;
+    // 3. Petición HTTP usando UrlFetchApp al endpoint API
+    const respuesta = UrlFetchApp.fetch(URL_CONSULTA, opcionesNavegacion);
+    const codigoEstado = respuesta.getResponseCode();
+    const contenidoRespuesta = respuesta.getContentText();
+
+    // REGISTROS DE DEPURACIÓN
+    Logger.log("Código de respuesta HTTP: " + codigoEstado);
+    Logger.log("URL final consultada: " + URL_CONSULTA);
+    Logger.log("Respuesta recibida: " + (contenidoRespuesta ? contenidoRespuesta.substring(0, 1000) : "Vacia"));
+
+    // 4. Manejo de códigos de estado HTTP distintos a 200 (Restricciones, reCAPTCHA, Errores de Servidor)
+    if (codigoEstado === 428 || codigoEstado === 403) {
+      return {
+        exito: false,
+        tipoError: 'RESTRICCION_SERVICIO',
+        mensaje: 'El servicio requiere validación de seguridad reCAPTCHA o presenta restricciones de acceso.'
+      };
     }
 
-    // 3. Petición HTTP usando UrlFetchApp
-    const respuesta = UrlFetchApp.fetch(urlConParametros, opcionesNavegacion);
-    const codigoEstado = respuesta.getResponseCode();
-    const htmlContenido = respuesta.getContentText();
-
-    // REGISTROS DE DEPURACIÓN (Logger.log temporales requeridos)
-    Logger.log("Código de respuesta HTTP: " + codigoEstado);
-    Logger.log("URL final consultada: " + urlConParametros);
-    Logger.log("Primeros 1000 caracteres de la respuesta recibida:\n" + (htmlContenido ? htmlContenido.substring(0, 1000) : "Vacio"));
-
-    // 4. Manejo de errores HTTP de servidor/sitio no disponible
     if (codigoEstado >= 500) {
       return {
         exito: false,
         tipoError: 'SITIO_NO_DISPONIBLE',
-        mensaje: `El sitio web de consulta no está disponible actualmente (Error ${codigoEstado}). Por favor intente más tarde.`
+        mensaje: `El servicio remoto no está disponible actualmente (Error HTTP ${codigoEstado}). Por favor intente más tarde.`
       };
     }
 
-    if (codigoEstado === 404) {
+    if (codigoEstado !== 200) {
       return {
         exito: false,
-        tipoError: 'SITIO_NO_DISPONIBLE',
-        mensaje: 'La página de consulta especificada no se encuentra disponible (Error 404).'
+        tipoError: 'ERROR_HTTP',
+        mensaje: `El servicio devolvió una respuesta con código de estado HTTP ${codigoEstado}.`
       };
     }
 
-    // 5. Analizar la respuesta mediante técnicas de parsing adaptadas a HTML o JSON
-    return analizarRespuestaHtml(htmlContenido, curp);
+    // 5. Analizar y procesar la respuesta JSON del servicio
+    return analizarRespuestaJson(contenidoRespuesta, curp);
 
   } catch (error) {
     const errorStr = error.toString().toLowerCase();
 
-    // Diagnóstico específico de tipos de error de red
+    // Diagnóstico específico de excepciones de red
     if (errorStr.includes('timeout') || errorStr.includes('exceeded maximum execution time') || errorStr.includes('deadline')) {
       return {
         exito: false,
         tipoError: 'TIMEOUT',
-        mensaje: 'El tiempo de espera para consultar el sitio externo ha agotado el límite. Intente de nuevo.'
+        mensaje: 'El tiempo de espera para consultar el servicio remoto ha agotado el límite. Intente de nuevo.'
       };
     } else if (errorStr.includes('dns') || errorStr.includes('connection reset') || errorStr.includes('failed to connect') || errorStr.includes('address')) {
       return {
         exito: false,
         tipoError: 'ERROR_CONEXION',
-        mensaje: 'Error de conexión con el sitio remoto. Verifique su acceso a internet o la URL de consulta.'
+        mensaje: 'Error de conexión con el servicio remoto. Verifique su acceso a internet o el estado del endpoint.'
       };
     } else {
       return {
@@ -196,74 +201,37 @@ function validarCurpEnServicio(curpIngresada) {
 }
 
 /**
- * Función auxiliar para parsear el contenido obtenido del scraping (HTML o JSON).
- * Adapta la extracción a la estructura real de la respuesta.
+ * Analiza la respuesta en formato JSON proveniente del servicio API.
  *
- * @param {string} contenido - Contenido HTML o JSON devuelto por el servidor remoto.
+ * @param {string} contenido - Respuesta del servidor en formato texto/JSON.
  * @param {string} curp - CURP consultada.
- * @returns {Object} Resultado indicando si existe o no la CURP.
+ * @returns {Object} Objeto con resultado de la consulta (existencia o no localización).
  */
-function analizarRespuestaHtml(contenido, curp) {
+function analizarRespuestaJson(contenido, curp) {
+  // Manejo de respuesta vacía
   if (!contenido || contenido.trim() === '') {
     return {
       exito: false,
-      tipoError: 'ESTRUCTURA_CAMBIADA',
-      mensaje: 'El sitio remoto devolvió un contenido vacío.'
+      tipoError: 'RESPUESTA_VACIA',
+      mensaje: 'El servicio remoto devolvió una respuesta vacía.'
     };
   }
 
-  // 1. Intentar parsing JSON (en caso de que la respuesta sea una API REST o JSON)
+  // Parsear contenido JSON
+  let datos;
   try {
-    const jsonRes = JSON.parse(contenido);
-    if (jsonRes) {
-      Logger.log("Estructura real utilizada: Respuesta en formato JSON. Código: " + jsonRes.codigo);
-      if (jsonRes.codigo === "01" || (jsonRes.registros && jsonRes.registros.length > 0)) {
-        return {
-          exito: true,
-          existe: true,
-          curp: curp,
-          mensaje: '✅ CURP encontrada'
-        };
-      } else if (jsonRes.codigo === "02" || jsonRes.codigo === "03" || (jsonRes.mensaje && /no (se )?encontr/i.test(jsonRes.mensaje))) {
-        return {
-          exito: true,
-          existe: false,
-          curp: curp,
-          mensaje: '❌ CURP no encontrada en los registros.'
-        };
-      }
-    }
+    datos = JSON.parse(contenido);
   } catch (e) {
-    // Si no es JSON, continuar con el análisis del documento HTML
+    return {
+      exito: false,
+      tipoError: 'JSON_INVALIDO',
+      mensaje: 'La respuesta devuelta por el servicio no tiene un formato JSON válido.'
+    };
   }
 
-  Logger.log("Estructura real utilizada: Respuesta en formato HTML.");
-
-  // 2. Patrones explícitos para detectar si NO existe la CURP
-  const patronesNoEncontrado = [
-    /no se encontr[óo] información/i,
-    /curp no existe/i,
-    /la curp ingresada no es válida/i,
-    /no existe registro/i,
-    /no se encontraron resultados/i,
-    /sin registros/i,
-    /curp no registrada/i,
-    /no encontrada/i
-  ];
-
-  for (let patron of patronesNoEncontrado) {
-    if (patron.test(contenido)) {
-      return {
-        exito: true,
-        existe: false,
-        curp: curp,
-        mensaje: '❌ CURP no encontrada en los registros.'
-      };
-    }
-  }
-
-  // 3. Evaluar si la CURP ingresada o confirmación explícita de datos existe en el cuerpo HTML
-  if (contenido.toUpperCase().includes(curp.toUpperCase())) {
+  // Criterios de evaluación de la respuesta JSON:
+  // 1. CURP existente: codigo === "01" y arreglo registros no vacío
+  if (datos.codigo === "01" && datos.registros && datos.registros.length > 0) {
     return {
       exito: true,
       existe: true,
@@ -272,33 +240,28 @@ function analizarRespuestaHtml(contenido, curp) {
     };
   }
 
-  // 4. Patrones de éxito de coincidencia de estructura HTML (RENAPO / Trámite CURP)
-  const patronesEncontrado = [
-    new RegExp(`curp[\\s\\S]*?${curp}`, 'i'),
-    new RegExp(`${curp}[\\s\\S]*?(registrada|encontrada|válida|valida|datos del ciudadano|curp confirmada)`, 'i'),
-    /datos del ciudadano/i,
-    /resultado de la consulta/i,
-    /curp\s*registrada/i,
-    /tramite-curp/i,
-    /tramite-result/i,
-    /renapo/i
-  ];
-
-  for (let patron of patronesEncontrado) {
-    if (patron.test(contenido)) {
-      return {
-        exito: true,
-        existe: true,
-        curp: curp,
-        mensaje: '✅ CURP encontrada'
-      };
-    }
+  // 2. CURP no existente: registros vacíos o código de no localización ("02", "03", etc.)
+  if ((datos.registros && datos.registros.length === 0) || datos.codigo === "02" || datos.codigo === "03" || (datos.mensaje && /no (se )?encontr/i.test(datos.mensaje))) {
+    return {
+      exito: true,
+      existe: false,
+      curp: curp,
+      mensaje: '❌ CURP no encontrada'
+    };
   }
 
-  // 5. Si ninguna regla anterior determinó el resultado, reportar cambio de estructura
+  // Resultado por defecto si el arreglo de registros está vacío o no coincide con '01'
   return {
-    exito: false,
-    tipoError: 'ESTRUCTURA_CAMBIADA',
-    mensaje: 'No fue posible parsear la respuesta del sitio web. La estructura HTML del sitio fuente puede haber cambiado.'
+    exito: true,
+    existe: false,
+    curp: curp,
+    mensaje: '❌ CURP no encontrada'
   };
+}
+
+/**
+ * Función de compatibilidad para mantener la firma existente en el proyecto.
+ */
+function analizarRespuestaHtml(contenido, curp) {
+  return analizarRespuestaJson(contenido, curp);
 }
