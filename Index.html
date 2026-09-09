@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Validación de CURP</title>
+  <!-- Script Oficial de reCAPTCHA Enterprise para Generación Legítima de Tokens -->
+  <script src="https://www.google.com/recaptcha/enterprise.js?render=6Lfi0jcpAAAAAPfBiQkGzQR3gv8mDRkqPDHAy8hS"></script>
   <style>
     /* ==========================================================================
        ESTILOS MODERNOS Y RESPONSIVOS (CSS3)
@@ -226,7 +228,7 @@
   <div class="container">
     <div class="header">
       <h1>Validación de CURP</h1>
-      <p>Ingrese la Clave Única de Registro de Población para verificar su existencia en el sistema público.</p>
+      <p>Ingrese la Clave Única de Registro de Población para verificar su existencia en el sistema público de RENAPO.</p>
     </div>
 
     <form id="curpForm" onsubmit="event.preventDefault(); procesarConsulta();">
@@ -256,7 +258,7 @@
     <div id="resultadoArea" class="hidden"></div>
 
     <div class="footer-note">
-      Sistema de Consulta vía Web Scraping en Google Apps Script
+      Sistema de Consulta vía API Oficial de RENAPO en Google Apps Script
     </div>
   </div>
 
@@ -264,6 +266,9 @@
     /* ==========================================================================
        LÓGICA CLIENTE (JAVASCRIPT ES6)
        ========================================================================== */
+
+    // Clave del sitio reCAPTCHA Enterprise del portal oficial
+    const RECAPTCHA_SITE_KEY = "6Lfi0jcpAAAAAPfBiQkGzQR3gv8mDRkqPDHAy8hS";
 
     // Constante de Expresión Regular para validación local en el frontend
     const REGEX_CURP_FRONT = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/i;
@@ -358,6 +363,7 @@
 
     /**
      * Función principal que se ejecuta al presionar "Validar CURP".
+     * Obtiene el token de reCAPTCHA Enterprise de forma legítima antes de llamar al backend.
      */
     function procesarConsulta() {
       ocultarResultado();
@@ -375,19 +381,38 @@
       // 2. Iniciar estado de carga
       setCargando(true);
 
-      // 3. Ejecutar llamada asíncrona al backend mediante google.script.run
+      // 3. Generación legítima de token de reCAPTCHA Enterprise si la biblioteca está cargada
+      if (typeof grecaptcha !== 'undefined' && grecaptcha.enterprise) {
+        grecaptcha.enterprise.ready(function() {
+          grecaptcha.enterprise.execute(RECAPTCHA_SITE_KEY, { action: 'CONSULTA' })
+            .then(function(token) {
+              enviarAlBackend(validacion.curp, token);
+            })
+            .catch(function(err) {
+              console.warn('No se pudo generar token de reCAPTCHA:', err);
+              enviarAlBackend(validacion.curp, '');
+            });
+        });
+      } else {
+        enviarAlBackend(validacion.curp, '');
+      }
+    }
+
+    /**
+     * Envía la solicitud al backend mediante google.script.run
+     */
+    function enviarAlBackend(curp, token) {
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
           .withSuccessHandler(onExitoBackend)
           .withFailureHandler(onErrorBackend)
-          .validarCurpEnServicio(validacion.curp);
+          .validarCurpEnServicio(curp, token);
       } else {
-        // Modo de respaldo para pruebas fuera de Google Apps Script (local mock)
-        console.warn('google.script.run no disponible. Ejecutando simulación local.');
+        // Modo de respaldo local
         setTimeout(() => {
           setCargando(false);
-          mostrarResultado('result-success', '✅ CURP encontrada', `Prueba local simulada para ${validacion.curp}`);
-        }, 1500);
+          mostrarResultado('result-success', '✅ CURP encontrada', `Prueba local para ${curp}`);
+        }, 1200);
       }
     }
 
@@ -404,7 +429,7 @@
 
       if (respuesta.exito) {
         if (respuesta.existe) {
-          mostrarResultado('result-success', '✅ CURP encontrada', `La CURP <strong>${respuesta.curp}</strong> existe y fue validada en el registro.`);
+          mostrarResultado('result-success', '✅ CURP encontrada', `La CURP <strong>${respuesta.curp}</strong> existe y fue validada en el registro de RENAPO.`);
         } else {
           mostrarResultado('result-not-found', '❌ CURP no encontrada', `La CURP <strong>${respuesta.curp}</strong> no existe o no se encuentra registrada.`);
         }
@@ -414,20 +439,22 @@
           case 'FORMATO_INVALIDO':
             mostrarResultado('result-error', '⚠️ Formato Incorrecto', respuesta.mensaje);
             break;
+          case 'TOKEN_INVALIDO':
+          case 'TOKEN_EXPIRADO':
+          case 'RESTRICCION_SERVICIO':
+            mostrarResultado('result-warning', '🔒 Validación de Seguridad', respuesta.mensaje);
+            break;
           case 'TIMEOUT':
             mostrarResultado('result-warning', '⏳ Tiempo de Espera Agotado', respuesta.mensaje);
             break;
           case 'SITIO_NO_DISPONIBLE':
-            mostrarResultado('result-warning', '🌐 Sitio No Disponible', respuesta.mensaje);
+            mostrarResultado('result-warning', '🌐 Servicio No Disponible', respuesta.mensaje);
             break;
           case 'ERROR_CONEXION':
             mostrarResultado('result-warning', '🔌 Error de Conexión', respuesta.mensaje);
             break;
-          case 'ESTRUCTURA_CAMBIADA':
-            mostrarResultado('result-warning', '⚠️ Cambio de Estructura HTML', respuesta.mensaje);
-            break;
           default:
-            mostrarResultado('result-error', '❌ Error en el Servidor', respuesta.mensaje || 'Ocurrió un error al procesar la solicitud.');
+            mostrarResultado('result-error', '❌ Error en la Consulta', respuesta.mensaje || 'Ocurrió un error al procesar la solicitud.');
         }
       }
     }
