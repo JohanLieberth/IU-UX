@@ -3,9 +3,8 @@
  * APLICACIÓN WEB DE VALIDACIÓN DE CURP EN GOOGLE APPS SCRIPT
  * ==============================================================================
  *
- * Este archivo contiene la lógica backend del servidor (Google Apps Script)
- * encargada de consultar el servicio API REST oficial en formato JSON para validar
- * la existencia de una CURP.
+ * Lógica backend del servidor (Google Apps Script) para la consulta del servicio
+ * oficial API REST de RENAPO incorporando el token de reCAPTCHA Enterprise.
  */
 
 // ==============================================================================
@@ -13,14 +12,12 @@
 // ==============================================================================
 
 /**
- * URL del servicio API REST oficial de RENAPO para la consulta de CURP.
+ * URL del servicio API REST oficial para la consulta de CURP.
  */
 const URL_CONSULTA = "https://www.gob.mx/v1/renapoCURP/consulta";
 
 /**
  * Expresión regular estándar para la validación del formato oficial de la CURP mexicana.
- * Formato: 4 letras, 6 dígitos (AAMMDD), Sexo (H/M), 2 letras de entidad federativa,
- * 3 letras consonantes internas, 1 carácter alfanumérico (homoclave), 1 dígito verificador.
  */
 const REGEX_CURP = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/i;
 
@@ -30,10 +27,7 @@ const REGEX_CURP = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/i;
 // ==============================================================================
 
 /**
- * Función principal que sirve la aplicación web al acceder a la URL del despliegue.
- *
- * @param {Object} e - Objeto de evento del servidor web.
- * @returns {HtmlOutput} Página HTML renderizada para el cliente.
+ * Función principal que sirve la aplicación web.
  */
 function doGet(e) {
   try {
@@ -49,10 +43,7 @@ function doGet(e) {
 }
 
 /**
- * Función auxiliar para incluir archivos HTML dentro de plantillas (si se requiere modularizar).
- *
- * @param {string} filename - Nombre del archivo a incluir sin extensión.
- * @returns {string} Contenido del archivo HTML.
+ * Función auxiliar para incluir archivos HTML dentro de plantillas.
  */
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
@@ -65,9 +56,6 @@ function include(filename) {
 
 /**
  * Valida si una cadena cumple con la longitud y formato estricto de una CURP.
- *
- * @param {string} curp - Cadena a validar.
- * @returns {Object} Objeto con resultado de validación ({ esValido: boolean, mensaje: string }).
  */
 function validarFormatoCurp(curp) {
   if (!curp || typeof curp !== 'string') {
@@ -99,16 +87,16 @@ function validarFormatoCurp(curp) {
 // ==============================================================================
 
 /**
- * Realiza la consulta directa al servicio API REST en formato JSON mediante UrlFetchApp,
- * incluyendo el token de reCAPTCHA Enterprise generado legítimamente en el cliente.
+ * Función principal expuesta al frontend para validar la CURP utilizando
+ * el token de reCAPTCHA Enterprise generado legítimamente.
  *
- * @param {string} curpIngresada - CURP capturada por el usuario en el frontend.
- * @param {string} [tokenRecaptcha=""] - Token de reCAPTCHA Enterprise generado en el navegador.
- * @returns {Object} Resultado estructurado para ser procesado en el cliente.
+ * @param {string} curp - CURP capturada por el usuario.
+ * @param {string} recaptchaToken - Token de reCAPTCHA Enterprise.
+ * @returns {Object} Resultado con la respuesta formateada.
  */
-function validarCurpEnServicio(curpIngresada, tokenRecaptcha) {
-  // 1. Validar formato previo en backend
-  const validacion = validarFormatoCurp(curpIngresada);
+function validarCurp(curp, recaptchaToken) {
+  // 1. Validar formato de CURP
+  const validacion = validarFormatoCurp(curp);
   if (!validacion.esValido) {
     return {
       exito: false,
@@ -117,20 +105,25 @@ function validarCurpEnServicio(curpIngresada, tokenRecaptcha) {
     };
   }
 
-  const curp = validacion.curpLimpia;
+  const curpLimpia = validacion.curpLimpia;
 
-  // 2. Construcción del payload JSON para el servicio oficial
+  // 2. Validar presencia del token de reCAPTCHA
+  if (!recaptchaToken || typeof recaptchaToken !== 'string' || recaptchaToken.trim() === '') {
+    return {
+      exito: false,
+      tipoError: 'TOKEN_NULO',
+      mensaje: '⚠️ No fue posible validar reCAPTCHA'
+    };
+  }
+
+  // 3. Preparar payload JSON para el servicio
   const payload = {
-    curp: curp,
+    curp: curpLimpia,
     tipoBusqueda: "curp",
+    token: recaptchaToken.trim(),
     ip: "127.0.0.1"
   };
 
-  if (tokenRecaptcha && typeof tokenRecaptcha === 'string') {
-    payload.token = tokenRecaptcha;
-  }
-
-  // 3. Configuración de la petición POST HTTP mediante UrlFetchApp
   const opcionesNavegacion = {
     method: 'post',
     contentType: 'application/json',
@@ -147,78 +140,64 @@ function validarCurpEnServicio(curpIngresada, tokenRecaptcha) {
     const codigoEstado = respuesta.getResponseCode();
     const contenidoRespuesta = respuesta.getContentText();
 
-    // REGISTROS DE DEPURACIÓN
-    Logger.log("Código de respuesta HTTP: " + codigoEstado);
-    Logger.log("URL final consultada: " + URL_CONSULTA);
-    Logger.log("Respuesta recibida: " + (contenidoRespuesta ? contenidoRespuesta.substring(0, 1000) : "Vacia"));
+    Logger.log("HTTP Code: " + codigoEstado);
+    Logger.log("Respuesta recibida: " + (contenidoRespuesta ? contenidoRespuesta.substring(0, 500) : "Vacia"));
 
-    // 4. Manejo de códigos de respuesta HTTP de error o restricciones
+    // Manejo de errores HTTP
     if (codigoEstado === 428 || codigoEstado === 403) {
       return {
         exito: false,
-        tipoError: 'RESTRICCION_SERVICIO',
-        mensaje: 'El servicio requiere una verificación reCAPTCHA Enterprise legítima desde el dominio oficial del portal.'
-      };
-    }
-
-    if (codigoEstado >= 500) {
-      return {
-        exito: false,
-        tipoError: 'SITIO_NO_DISPONIBLE',
-        mensaje: `El servicio remoto no está disponible actualmente (Error HTTP ${codigoEstado}). Por favor intente más tarde.`
+        tipoError: 'TOKEN_EXPIRADO',
+        mensaje: '⚠️ El token de seguridad expiró, intenta nuevamente'
       };
     }
 
     if (codigoEstado !== 200) {
       return {
         exito: false,
-        tipoError: 'ERROR_HTTP',
-        mensaje: `El servicio devolvió un código de estado HTTP ${codigoEstado}.`
+        tipoError: 'ERROR_COMUNICACION',
+        mensaje: '⚠️ Error de comunicación con el servicio'
       };
     }
 
-    // 5. Analizar y procesar la respuesta JSON del servicio
-    return analizarRespuestaJson(contenidoRespuesta, curp);
+    return analizarRespuestaJson(contenidoRespuesta, curpLimpia);
 
   } catch (error) {
     const errorStr = error.toString().toLowerCase();
+    Logger.log("Error en UrlFetchApp: " + errorStr);
 
-    // Diagnóstico de excepciones de red
     if (errorStr.includes('timeout') || errorStr.includes('exceeded maximum execution time') || errorStr.includes('deadline')) {
       return {
         exito: false,
         tipoError: 'TIMEOUT',
-        mensaje: 'El tiempo de espera para consultar el servicio remoto ha agotado el límite. Intente de nuevo.'
-      };
-    } else if (errorStr.includes('dns') || errorStr.includes('connection reset') || errorStr.includes('failed to connect') || errorStr.includes('address')) {
-      return {
-        exito: false,
-        tipoError: 'ERROR_CONEXION',
-        mensaje: 'Error de conexión con el servicio remoto. Verifique su acceso a internet o el estado del endpoint.'
-      };
-    } else {
-      return {
-        exito: false,
-        tipoError: 'DESCONOCIDO',
-        mensaje: `Ocurrió un error inesperado al realizar la consulta: ${error.message || error.toString()}`
+        mensaje: '⚠️ Error de comunicación con el servicio (tiempo de espera agotado)'
       };
     }
+
+    return {
+      exito: false,
+      tipoError: 'ERROR_COMUNICACION',
+      mensaje: '⚠️ Error de comunicación con el servicio'
+    };
   }
 }
 
 /**
- * Analiza la respuesta en formato JSON proveniente del servicio API.
- *
- * @param {string} contenido - Respuesta del servidor en formato texto/JSON.
- * @param {string} curp - CURP consultada.
- * @returns {Object} Objeto con resultado de la consulta.
+ * Alias de compatibilidad para mantener soporte con llamadas anteriores.
+ */
+function validarCurpEnServicio(curp, token) {
+  return validarCurp(curp, token);
+}
+
+/**
+ * Analiza la respuesta JSON del servidor de RENAPO.
  */
 function analizarRespuestaJson(contenido, curp) {
   if (!contenido || contenido.trim() === '') {
     return {
       exito: false,
       tipoError: 'RESPUESTA_VACIA',
-      mensaje: 'El servicio remoto devolvió una respuesta vacía.'
+      mensaje: '⚠️ Error de comunicación con el servicio'
     };
   }
 
@@ -229,20 +208,20 @@ function analizarRespuestaJson(contenido, curp) {
     return {
       exito: false,
       tipoError: 'JSON_INVALIDO',
-      mensaje: 'La respuesta devuelta por el servicio no tiene un formato JSON válido.'
+      mensaje: '⚠️ Error de comunicación con el servicio'
     };
   }
 
-  // Evaluación de token expirado o inválido
-  if (datos.mensaje && (datos.mensaje.toLowerCase().includes('token') || datos.mensaje.toLowerCase().includes('captcha'))) {
+  // Validaciones del mensaje devuelto por el servicio remoto sobre el token
+  if (datos.mensaje && (datos.mensaje.toLowerCase().includes('token') || datos.mensaje.toLowerCase().includes('captcha') || datos.mensaje.toLowerCase().includes('expirado'))) {
     return {
       exito: false,
-      tipoError: 'TOKEN_INVALIDO',
-      mensaje: `Error de validación de seguridad: ${datos.mensaje}`
+      tipoError: 'TOKEN_EXPIRADO',
+      mensaje: '⚠️ El token de seguridad expiró, intenta nuevamente'
     };
   }
 
-  // Criterios de evaluación del servicio oficial:
+  // Criterios oficiales:
   // 1. CURP existente: codigo === "01" y registros.length > 0
   if (datos.codigo === "01" && datos.registros && datos.registros.length > 0) {
     return {
@@ -253,16 +232,7 @@ function analizarRespuestaJson(contenido, curp) {
     };
   }
 
-  // 2. CURP no existente: registros vacíos o código de no localización ("02", "03")
-  if ((datos.registros && datos.registros.length === 0) || datos.codigo === "02" || datos.codigo === "03" || (datos.mensaje && /no (se )?encontr/i.test(datos.mensaje))) {
-    return {
-      exito: true,
-      existe: false,
-      curp: curp,
-      mensaje: '❌ CURP no encontrada'
-    };
-  }
-
+  // 2. CURP no existente
   return {
     exito: true,
     existe: false,
@@ -272,7 +242,7 @@ function analizarRespuestaJson(contenido, curp) {
 }
 
 /**
- * Función de compatibilidad.
+ * Función de compatibilidad para parsear respuestas.
  */
 function analizarRespuestaHtml(contenido, curp) {
   return analizarRespuestaJson(contenido, curp);
