@@ -127,9 +127,7 @@ function actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivoCancelacion) {
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === idAcuerdo) {
         sheet.getRange(i + 1, 8).setValue(nuevoEstado);
-        if (nuevoEstado === 'Cancelado') {
-          sheet.getRange(i + 1, 9).setValue(motivoCancelacion || '');
-        }
+        sheet.getRange(i + 1, 9).setValue(motivoCancelacion || '');
         return buildResponse(true, { id_acuerdo: idAcuerdo, nuevo_estado: nuevoEstado }, 'Estado de acuerdo actualizado.');
       }
     }
@@ -137,5 +135,38 @@ function actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivoCancelacion) {
     return buildResponse(false, null, 'Acuerdo no encontrado.');
   } catch (error) {
     return buildResponse(false, null, 'Error al actualizar acuerdo: ' + error.toString());
+  }
+}
+
+/**
+ * Actualiza en lote los estados y notas de los acuerdos de una minuta.
+ * @param {Array<Object>} cambios
+ * @returns {string} JSON
+ */
+function guardarSeguimientoAcuerdosMinuta(cambios) {
+  try {
+    if (!Array.isArray(cambios) || cambios.length === 0) {
+      return buildResponse(true, null, 'No hubo cambios que guardar.');
+    }
+
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('Acuerdos');
+    const data = sheet.getDataRange().getValues();
+
+    cambios.forEach(item => {
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === item.id_acuerdo) {
+          if (item.estado) {
+            sheet.getRange(i + 1, 8).setValue(item.estado);
+          }
+          sheet.getRange(i + 1, 9).setValue(item.notas !== undefined ? item.notas : '');
+          break;
+        }
+      }
+    });
+
+    return buildResponse(true, null, 'Seguimiento de acuerdos guardado correctamente.');
+  } catch (error) {
+    return buildResponse(false, null, 'Error al guardar seguimiento de acuerdos: ' + error.toString());
   }
 }

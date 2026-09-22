@@ -29,6 +29,54 @@
   </div>
 </div>
 
+<!-- Modal Seguimiento de Acuerdos desde Minutas (Modo Lectura + Estatus/Notas) -->
+<div class="modal fade" id="modalSeguimientoMinuta" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold" id="modalSeguimientoMinutaTitle"><i class="bi bi-check2-square me-2"></i>Seguimiento de Acuerdos de la Minuta</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="formSeguimientoMinuta" onsubmit="handleGuardarSeguimientoMinuta(event)">
+          <input type="hidden" id="seg_minuta_id">
+
+          <div class="card bg-light p-3 mb-4 border-0">
+            <h6 class="fw-bold text-slate-800 mb-1" id="seg_minuta_titulo">-</h6>
+            <p class="text-muted small mb-0" id="seg_minuta_sub">-</p>
+          </div>
+
+          <div class="mb-3">
+            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-list-check me-1"></i> 4. ACCIONES Y ACUERDOS (Modo Seguimiento)</h6>
+            <div class="table-responsive">
+              <table class="table table-bordered align-middle" id="tableSeguimientoMinutaAcuerdos">
+                <thead class="table-secondary">
+                  <tr>
+                    <th style="width: 50px;">No.</th>
+                    <th style="width: 100px;">Tipo</th>
+                    <th>Descripción del Acuerdo (Solo Lectura)</th>
+                    <th>Responsable(s)</th>
+                    <th style="width: 130px;">Fecha Límite</th>
+                    <th style="width: 150px;">Estatus <span class="text-danger">*</span></th>
+                    <th>Notas / Motivo</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodySeguimientoMinutaAcuerdos">
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+            <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-1"></i> Guardar Cambios de Seguimiento</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="modalMinuta" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">

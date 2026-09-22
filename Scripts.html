@@ -317,6 +317,7 @@
         '<td>' + escapeHtml(m.lugar || '-') + '</td>' +
         '<td>' + docBtn + ' ' + pdfBtn + '</td>' +
         '<td class="text-end">' +
+          '<button class="btn btn-sm btn-primary me-1" onclick="openSeguimientoAcuerdosMinuta(\'' + escapeJs(m.id_minuta) + '\')" title="Seguimiento de Acuerdos"><i class="bi bi-check2-square"></i> Seguimiento</button>' +
           '<button class="btn btn-sm btn-success me-1" onclick="handleGenerarDocumento(\'' + escapeJs(m.id_minuta) + '\')" title="Generar Documento y PDF"><i class="bi bi-gear-fill"></i> Documento</button>' +
           '<button class="btn btn-sm btn-outline-primary me-1" onclick="openModalMinuta(\'' + escapeJs(m.id_minuta) + '\')"><i class="bi bi-pencil"></i></button>' +
           '<button class="btn btn-sm btn-outline-danger" onclick="confirmEliminarMinuta(\'' + escapeJs(m.id_minuta) + '\')"><i class="bi bi-trash"></i></button>' +
@@ -331,6 +332,109 @@
         retrieve: true
       });
     }
+  }
+
+  function openSeguimientoAcuerdosMinuta(idMinuta) {
+    document.getElementById('seg_minuta_id').value = idMinuta;
+    document.getElementById('tbodySeguimientoMinutaAcuerdos').innerHTML = '<tr><td colspan="7" class="text-center py-3 text-muted"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Cargando acuerdos...</td></tr>';
+
+    showLoading(true);
+    google.script.run
+      .withSuccessHandler(function(resRaw) {
+        showLoading(false);
+        const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+        if (res.success && res.data) {
+          const minuta = res.data.minuta || {};
+          const acuerdos = res.data.acuerdos || [];
+
+          document.getElementById('seg_minuta_titulo').innerText = minuta.titulo || 'Minuta de Reunión';
+          document.getElementById('seg_minuta_sub').innerText = 'Fecha: ' + formatDateDisplayJS(minuta.fecha_reunion) + ' | Lugar: ' + (minuta.lugar || 'N/A');
+
+          const tbody = document.getElementById('tbodySeguimientoMinutaAcuerdos');
+          tbody.innerHTML = '';
+
+          if (acuerdos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Esta minuta no contiene acciones ni acuerdos registrados.</td></tr>';
+          } else {
+            acuerdos.forEach(function(ac, idx) {
+              const est = ac.estado_calculado || 'Pendiente';
+              const optPendiente = est === 'Pendiente' ? 'selected' : '';
+              const optPorVencer = est === 'Por vencer' ? 'selected' : '';
+              const optVencido = est === 'Vencido' ? 'selected' : '';
+              const optAtendido = est === 'Atendido' ? 'selected' : '';
+              const optCancelado = est === 'Cancelado' ? 'selected' : '';
+
+              const tipoBadge = ac.tipo === 'Informativo' ? 'bg-info' : 'bg-primary';
+
+              tbody.innerHTML += '<tr data-id-acuerdo="' + escapeJs(ac.id_acuerdo) + '">' +
+                '<td class="text-center fw-bold">' + (idx + 1) + '</td>' +
+                '<td><span class="badge ' + tipoBadge + '">' + escapeHtml(ac.tipo || 'Acuerdo') + '</span></td>' +
+                '<td><div class="fw-semibold text-slate-800">' + escapeHtml(ac.descripcion) + '</div></td>' +
+                '<td><span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>' + escapeHtml(ac.responsable) + '</span></td>' +
+                '<td>' + formatDateDisplayJS(ac.fecha_cumplimiento) + '</td>' +
+                '<td>' +
+                  '<select class="form-select form-select-sm seg-acuerdo-estado">' +
+                    '<option value="Pendiente" ' + optPendiente + '>Pendiente</option>' +
+                    '<option value="Por vencer" ' + optPorVencer + '>Por vencer</option>' +
+                    '<option value="Vencido" ' + optVencido + '>Vencido</option>' +
+                    '<option value="Atendido" ' + optAtendido + '>Atendido</option>' +
+                    '<option value="Cancelado" ' + optCancelado + '>Cancelado</option>' +
+                  '</select>' +
+                '</td>' +
+                '<td><textarea class="form-control form-control-sm seg-acuerdo-notas" rows="1" placeholder="Agregar notas o motivo...">' + escapeHtml(ac.motivo_cancelacion || '') + '</textarea></td>' +
+              '</tr>';
+            });
+          }
+
+          const modal = new bootstrap.Modal(document.getElementById('modalSeguimientoMinuta'));
+          modal.show();
+        } else {
+          showToast(res.message || 'Error al obtener acuerdos de la minuta.', false);
+        }
+      })
+      .withFailureHandler(function(err) {
+        showLoading(false);
+        showToast(err.message, false);
+      })
+      .obtenerDetalleMinuta(idMinuta);
+  }
+
+  function handleGuardarSeguimientoMinuta(e) {
+    e.preventDefault();
+
+    const cambios = [];
+    document.querySelectorAll('#tbodySeguimientoMinutaAcuerdos tr[data-id-acuerdo]').forEach(function(tr) {
+      const idAcuerdo = tr.getAttribute('data-id-acuerdo');
+      const selectEst = tr.querySelector('.seg-acuerdo-estado');
+      const inputNotas = tr.querySelector('.seg-acuerdo-notas');
+
+      if (idAcuerdo && selectEst) {
+        cambios.push({
+          id_acuerdo: idAcuerdo,
+          estado: selectEst.value,
+          notas: inputNotas ? inputNotas.value : ''
+        });
+      }
+    });
+
+    showLoading(true);
+    google.script.run
+      .withSuccessHandler(function(resRaw) {
+        showLoading(false);
+        const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+        if (res.success) {
+          showToast(res.message);
+          bootstrap.Modal.getInstance(document.getElementById('modalSeguimientoMinuta')).hide();
+          refreshAppData();
+        } else {
+          showToast(res.message, false);
+        }
+      })
+      .withFailureHandler(function(err) {
+        showLoading(false);
+        showToast(err.message, false);
+      })
+      .guardarSeguimientoAcuerdosMinuta(cambios);
   }
 
   function openModalMinuta(idMinuta) {
