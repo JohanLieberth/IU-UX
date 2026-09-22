@@ -29,6 +29,38 @@
   </div>
 </div>
 
+<!-- Modal Enviar Minuta en PDF por Correo Electrónico -->
+<div class="modal fade" id="modalEnviarEmailMinuta" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="formEnviarEmailMinuta" onsubmit="handleEnviarEmailMinuta(event)">
+        <div class="modal-header bg-slate-900 text-white">
+          <h5 class="modal-title fw-bold" id="modalEnviarEmailMinutaTitle"><i class="bi bi-envelope-paper me-2"></i>Enviar Minuta en PDF por Correo</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <input type="hidden" id="email_minuta_id">
+
+          <div class="mb-3">
+            <label for="email_destinatario" class="form-label fw-semibold">Correo Electrónico del Destinatario <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="email_destinatario" required placeholder="ejemplo@dominio.com">
+            <div class="invalid-feedback">Por favor ingresa un correo electrónico válido.</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="email_mensaje" class="form-label fw-semibold">Mensaje Corto (Opcional)</label>
+            <textarea class="form-control" id="email_mensaje" rows="3" placeholder="Adjunto a este correo encontrará el documento PDF de la minuta de reunión..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary px-4"><i class="bi bi-send me-1"></i> Enviar Correo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Seguimiento de Acuerdos desde Minutas (Modo Lectura + Estatus/Notas) -->
 <div class="modal fade" id="modalSeguimientoMinuta" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">

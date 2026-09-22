@@ -303,6 +303,76 @@ function generarDocumentoMinuta(idMinuta) {
   }
 }
 
+/**
+ * Genera el PDF de la minuta y lo envía por correo al destinatario indicado.
+ * @param {Object} payload { id_minuta, email_destinatario, mensaje }
+ * @returns {string} JSON
+ */
+function enviarMinutaPorEmail(payload) {
+  try {
+    if (!payload || !payload.id_minuta || !payload.email_destinatario) {
+      return buildResponse(false, null, 'Datos incompletos para el envío del correo.');
+    }
+
+    const email = payload.email_destinatario.toString().trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return buildResponse(false, null, 'El correo electrónico ingresado no tiene un formato válido.');
+    }
+
+    // Generar o actualizar el documento y PDF de la minuta
+    const resDoc = JSON.parse(generarDocumentoMinuta(payload.id_minuta));
+    if (!resDoc.success || !resDoc.data || !resDoc.data.pdf_url) {
+      return buildResponse(false, null, 'No se pudo generar el documento PDF para el envío.');
+    }
+
+    // Obtener detalles de la minuta para el asunto y cuerpo del mensaje
+    const resDetalle = JSON.parse(obtenerDetalleMinuta(payload.id_minuta));
+    const minuta = (resDetalle.success && resDetalle.data) ? resDetalle.data.minuta : {};
+    const proyectos = getSheetDataAsObjects('Proyectos');
+    const proyecto = proyectos.find(p => p.id_proyecto === minuta.id_proyecto) || {};
+    const nombreProyecto = proyecto.nombre || 'General';
+
+    const asunto = 'Minuta de Reunión - ' + (minuta.titulo || nombreProyecto) + ' (' + formatDateDisplay(minuta.fecha_reunion) + ')';
+
+    // Obtener el archivo PDF desde la URL o Drive
+    const pdfUrl = resDoc.data.pdf_url;
+    let pdfFile = null;
+    try {
+      const match = pdfUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        pdfFile = DriveApp.getFileById(match[1]);
+      }
+    } catch (e) {}
+
+    if (!pdfFile) {
+      return buildResponse(false, null, 'No se encontró el archivo PDF adjunto en Google Drive.');
+    }
+
+    const pdfBlob = pdfFile.getBlob();
+
+    const mensajeUsuario = (payload.mensaje || '').toString().trim();
+    const cuerpoHtml = '<div style="font-family: Arial, sans-serif; color: #334155; line-height: 1.5;">' +
+      '<h3 style="color: #1e3a8a;">Minuta de Reunión</h3>' +
+      '<p>Estimado(a),</p>' +
+      '<p>Se adjunta la minuta oficial de reunión correspondiente a <strong>' + (minuta.titulo || nombreProyecto) + '</strong> celebrada el <strong>' + formatDateDisplay(minuta.fecha_reunion) + '</strong>.</p>' +
+      (mensajeUsuario ? '<div style="background-color: #f1f5f9; padding: 12px; border-left: 4px solid #2563eb; margin: 15px 0;">' + escapeHtml(mensajeUsuario).replace(/\n/g, '<br>') + '</div>' : '') +
+      '<p>Atentamente,<br><strong>Sistema de Generación y Seguimiento de Minutas</strong></p>' +
+    '</div>';
+
+    MailApp.sendEmail({
+      to: email,
+      subject: asunto,
+      htmlBody: cuerpoHtml,
+      attachments: [pdfBlob]
+    });
+
+    return buildResponse(true, null, 'Minuta en PDF enviada por correo exitosamente a ' + email + '.');
+  } catch (error) {
+    return buildResponse(false, null, 'Error al enviar el correo: ' + error.toString());
+  }
+}
+
 function formatTableStandard(table, colWidths, centerAlignColumns) {
   table.setBorderColor('#CBD5E1');
 

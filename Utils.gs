@@ -160,6 +160,21 @@ function getOrCreateRootFolder() {
 }
 
 /**
+ * Sanitiza texto HTML para evitar inyecciones.
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
  * Envuelve la respuesta en formato estándar JSON para el cliente.
  * @param {boolean} success
  * @param {any} data

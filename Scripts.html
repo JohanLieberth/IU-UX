@@ -319,6 +319,7 @@
         '<td class="text-end">' +
           '<button class="btn btn-sm btn-primary me-1" onclick="openSeguimientoAcuerdosMinuta(\'' + escapeJs(m.id_minuta) + '\')" title="Seguimiento de Acuerdos"><i class="bi bi-check2-square"></i> Seguimiento</button>' +
           '<button class="btn btn-sm btn-success me-1" onclick="handleGenerarDocumento(\'' + escapeJs(m.id_minuta) + '\')" title="Generar Documento y PDF"><i class="bi bi-gear-fill"></i> Documento</button>' +
+          '<button class="btn btn-sm btn-dark me-1" onclick="openModalEnviarEmailMinuta(\'' + escapeJs(m.id_minuta) + '\')" title="Enviar PDF por Correo"><i class="bi bi-envelope"></i> Email</button>' +
           '<button class="btn btn-sm btn-outline-primary me-1" onclick="openModalMinuta(\'' + escapeJs(m.id_minuta) + '\')"><i class="bi bi-pencil"></i></button>' +
           '<button class="btn btn-sm btn-outline-danger" onclick="confirmEliminarMinuta(\'' + escapeJs(m.id_minuta) + '\')"><i class="bi bi-trash"></i></button>' +
         '</td>' +
@@ -787,6 +788,55 @@
         showToast('Error al generar el documento: ' + err.message, false);
       })
       .generarDocumentoMinuta(idMinuta);
+  }
+
+  function openModalEnviarEmailMinuta(idMinuta) {
+    document.getElementById('formEnviarEmailMinuta').reset();
+    document.getElementById('email_minuta_id').value = idMinuta;
+    document.getElementById('email_destinatario').classList.remove('is-invalid');
+
+    const modal = new bootstrap.Modal(document.getElementById('modalEnviarEmailMinuta'));
+    modal.show();
+  }
+
+  function handleEnviarEmailMinuta(e) {
+    e.preventDefault();
+
+    const inputEmail = document.getElementById('email_destinatario');
+    const emailVal = inputEmail.value.trim();
+    const mensajeVal = document.getElementById('email_mensaje').value;
+    const idMinuta = document.getElementById('email_minuta_id').value;
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailVal)) {
+      inputEmail.classList.add('is-invalid');
+      return;
+    }
+    inputEmail.classList.remove('is-invalid');
+
+    const payload = {
+      id_minuta: idMinuta,
+      email_destinatario: emailVal,
+      mensaje: mensajeVal
+    };
+
+    showLoading(true);
+    google.script.run
+      .withSuccessHandler(function(resRaw) {
+        showLoading(false);
+        const res = typeof resRaw === 'string' ? JSON.parse(resRaw) : resRaw;
+        if (res.success) {
+          showToast(res.message);
+          bootstrap.Modal.getInstance(document.getElementById('modalEnviarEmailMinuta')).hide();
+        } else {
+          showToast(res.message, false);
+        }
+      })
+      .withFailureHandler(function(err) {
+        showLoading(false);
+        showToast(err.message, false);
+      })
+      .enviarMinutaPorEmail(payload);
   }
 
   let debounceFilterTimer = null;
