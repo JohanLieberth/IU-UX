@@ -1,0 +1,285 @@
+<!-- Formulario Component (Modales) -->
+
+<!-- 1. Modal Registro Unico (Nuevo / Editar) -->
+<div class="modal fade" id="modalRegistro" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white py-3">
+        <h5 class="modal-title fw-bold" id="modalRegistroTitulo">
+          <i class="bi bi-pencil-square me-2"></i>Nuevo Registro de Acuerdo
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="formRegistro" onsubmit="event.preventDefault(); guardarRegistro();">
+          <input type="hidden" id="reg-noGral">
+
+          <!-- Sección 1: Datos de la Minuta/Sesión -->
+          <div class="p-3 mb-3 bg-light rounded border">
+            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-file-earmark-text me-1"></i>1. Datos de la Sesión y Minuta</h6>
+            <div class="row g-3">
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold">Tipo de Sesión</label>
+                <select id="reg-tipoSesion" class="form-select form-select-sm" onchange="actualizarFolioPreview()">
+                </select>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold">Fecha de Sesión</label>
+                <input type="date" id="reg-fechaSesion" class="form-control form-control-sm" onchange="actualizarFolioPreview()">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold">Etapa del Proyecto</label>
+                <select id="reg-etapaProyecto" class="form-select form-select-sm" onchange="actualizarFolioPreview()">
+                </select>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold">Módulo</label>
+                <select id="reg-modulo" class="form-select form-select-sm" onchange="actualizarFolioPreview()">
+                </select>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold">Folio Minuta (Generado Automático)</label>
+                <input type="text" id="reg-folioMinuta" class="form-control form-control-sm bg-white font-monospace fw-bold text-primary" placeholder="MIN_PJ_PMO_YYYYMMDD_MOD">
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold">Nombre de la Minuta</label>
+                <input type="text" id="reg-nombreMinuta" class="form-control form-control-sm" placeholder="Ej. Sesión de Alineación PMO">
+              </div>
+
+              <div class="col-12 col-md-3">
+                <label class="form-label small fw-bold">Origen del Acuerdo</label>
+                <select id="reg-origenAcuerdo" class="form-select form-select-sm">
+                </select>
+              </div>
+
+              <div class="col-12 col-md-3">
+                <label class="form-label small fw-bold">Fecha Solicitud</label>
+                <input type="date" id="reg-fechaSolicitud" class="form-control form-control-sm">
+              </div>
+            </div>
+          </div>
+
+          <!-- Sección 2: Detalle del Acuerdo u Observación -->
+          <div class="p-3 mb-3 bg-light rounded border">
+            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-card-checklist me-1"></i>2. Detalle del Acuerdo o Ajuste Solicitado</h6>
+            <div class="row g-3">
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold">Tipo de Observación</label>
+                <select id="reg-tipoObservacion" class="form-select form-select-sm">
+                </select>
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold">No. en Minuta</label>
+                <input type="number" id="reg-noEnMin" class="form-control form-control-sm" value="1" min="1">
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold">Prioridad <span class="text-danger">*</span></label>
+                <select id="reg-prioridad" class="form-select form-select-sm" required>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label small fw-bold">Acuerdo o Ajuste Solicitado <span class="text-danger">*</span></label>
+                <textarea id="reg-acuerdo" class="form-control form-control-sm" rows="3" placeholder="Escriba aquí la descripción detallada del acuerdo o ajuste solicitado..." required></textarea>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold">Solicitante (SOL)</label>
+                <input type="text" id="reg-sol" class="form-control form-control-sm" list="lista-participantes" placeholder="Nombre o Iniciales">
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold">Responsable (RESP) <span class="text-danger">*</span></label>
+                <input type="text" id="reg-resp" class="form-control form-control-sm" list="lista-participantes" placeholder="Nombre o Iniciales" required>
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold">Fecha Compromiso <span class="text-danger">*</span></label>
+                <input type="date" id="reg-fechaCompromiso" class="form-control form-control-sm" required>
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold">Estatus</label>
+                <select id="reg-estatus" class="form-select form-select-sm">
+                </select>
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold">Estatus de Firma</label>
+                <select id="reg-estatusFirma" class="form-select form-select-sm">
+                </select>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold">Comentarios Proveedor</label>
+                <textarea id="reg-comentariosProveedor" class="form-control form-control-sm" rows="2" placeholder="Avances, respuestas o notas del proveedor..."></textarea>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold">Observaciones PMO</label>
+                <textarea id="reg-observacionesPmo" class="form-control form-control-sm" rows="2" placeholder="Notas de seguimiento PMO, riesgo o validaciones..."></textarea>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold">Tracking / Seguimiento Cruzado (Vincular)</label>
+                <input type="text" id="reg-trackingComentarios" class="form-control form-control-sm" placeholder="Escriba o seleccione Folio / No. Gral de acuerdos relacionados...">
+              </div>
+
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold">URL Enlace Nube / Evidencia</label>
+                <input type="url" id="reg-nube" class="form-control form-control-sm" placeholder="https://drive.google.com/...">
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer bg-light py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="guardarRegistro()">
+          <i class="bi bi-save me-1"></i>Guardar Registro
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Datalist para autocomplete de participantes -->
+<datalist id="lista-participantes"></datalist>
+
+<!-- 2. Modal Captura Masiva (Varios acuerdos para una misma Minuta) -->
+<div class="modal fade" id="modalCapturaMasiva" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white py-3">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-layers me-2"></i>Captura Masiva de Acuerdos por Minuta
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <!-- Encabezado Común de Minuta -->
+        <div class="p-3 mb-3 bg-light rounded border">
+          <h6 class="fw-bold text-primary mb-3"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Datos Comunes de la Minuta</h6>
+          <div class="row g-3">
+            <div class="col-12 col-md-3">
+              <label class="form-label small fw-bold">Tipo Sesión</label>
+              <select id="batch-tipoSesion" class="form-select form-select-sm" onchange="actualizarFolioBatchPreview()">
+              </select>
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label small fw-bold">Fecha Sesión</label>
+              <input type="date" id="batch-fechaSesion" class="form-control form-control-sm" onchange="actualizarFolioBatchPreview()">
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label small fw-bold">Etapa Proyecto</label>
+              <select id="batch-etapaProyecto" class="form-select form-select-sm" onchange="actualizarFolioBatchPreview()">
+              </select>
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label small fw-bold">Módulo</label>
+              <select id="batch-modulo" class="form-select form-select-sm" onchange="actualizarFolioBatchPreview()">
+              </select>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold">Folio Minuta (Automático)</label>
+              <input type="text" id="batch-folioMinuta" class="form-control form-control-sm bg-white font-monospace text-primary fw-bold">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label small fw-bold">Nombre de la Minuta</label>
+              <input type="text" id="batch-nombreMinuta" class="form-control form-control-sm" placeholder="Nombre descriptivo de la minuta">
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla dinámica de acuerdos a ingresar -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h6 class="fw-bold text-dark mb-0"><i class="bi bi-list-check me-1"></i>Lista de Acuerdos a Registrar</h6>
+          <button type="button" class="btn btn-sm btn-outline-success fw-bold" onclick="agregarFilaBatch()">
+            <i class="bi bi-plus-lg me-1"></i>+ Agregar Acuerdo
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle text-sm" id="tabla-batch">
+            <thead class="table-secondary small text-nowrap">
+              <tr>
+                <th style="width: 40px;">#</th>
+                <th style="width: 140px;">Tipo Obs.</th>
+                <th style="min-width: 250px;">Acuerdo o Ajuste Solicitado <span class="text-danger">*</span></th>
+                <th style="width: 150px;">Responsable <span class="text-danger">*</span></th>
+                <th style="width: 130px;">F. Compromiso <span class="text-danger">*</span></th>
+                <th style="width: 100px;">Prioridad <span class="text-danger">*</span></th>
+                <th style="width: 120px;">Estatus</th>
+                <th style="width: 50px;"></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-batch">
+              <!-- Filas dinámicas -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm fw-bold" onclick="guardarCapturaMasiva()">
+          <i class="bi bi-cloud-upload me-1"></i>Guardar Todos los Acuerdos
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. Modal Detalle e Historial de Cambios -->
+<div class="modal fade" id="modalDetalle" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-dark text-white py-3">
+        <h5 class="modal-title fw-bold" id="detalle-titulo">
+          <i class="bi bi-info-circle me-2"></i>Detalle del Registro
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4" id="detalle-contenido">
+        <!-- Generado dinámicamente -->
+      </div>
+      <div class="modal-footer bg-light py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. Modal Importar Datos -->
+<div class="modal fade" id="modalImportar" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-secondary text-white py-3">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-file-earmark-arrow-up me-2"></i>Importación Masiva de Registros
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <p class="small text-muted mb-2">
+          Pega a continuación un objeto JSON (array de acuerdos) o datos tabulados copiados de Excel/Sheets:
+        </p>
+        <textarea id="importar-texto" class="form-control font-monospace text-sm" rows="8" placeholder='[{"acuerdo":"Ejemplo acuerdo", "resp":"Juan Pérez", "prioridad":"Alta", "fechaCompromiso":"2025-02-01"}]'></textarea>
+      </div>
+      <div class="modal-footer bg-light py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-success btn-sm fw-bold" onclick="procesarImportacion()">
+          <i class="bi bi-box-arrow-in-down me-1"></i>Procesar e Importar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

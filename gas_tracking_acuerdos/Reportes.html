@@ -1,0 +1,89 @@
+<!-- Reportes Component (Modales de Impresión y PDF) -->
+
+<!-- 1. Modal Vista Imprimible de Minuta Completa -->
+<div class="modal fade" id="modalVerMinuta" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white py-3">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-file-earmark-pdf me-2"></i>Vista Completa de Minuta
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4 bg-light" id="minuta-printable-container">
+        <!-- Renderizado dinámicamente -->
+      </div>
+      <div class="modal-footer bg-white py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" onclick="imprimirElemento('minuta-printable-container')">
+          <i class="bi bi-printer me-1"></i>Imprimir Minuta
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Modal Resumen Métricas y Cumplimiento -->
+<div class="modal fade" id="modalResumenMetricas" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-info text-dark py-3">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-bar-chart-line-fill me-2"></i>Resumen Automático por Módulo y Responsable
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4" id="resumen-printable-container">
+        <div class="mb-4">
+          <h6 class="fw-bold text-primary border-bottom pb-2">
+            <i class="bi bi-diagram-3 me-1"></i>1. Distribución de Acuerdos por Módulo
+          </h6>
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped align-middle text-sm">
+              <thead class="table-dark">
+                <tr>
+                  <th>Módulo</th>
+                  <th class="text-center text-warning">Pendientes</th>
+                  <th class="text-center text-success">Resueltos</th>
+                  <th class="text-center text-secondary">Informativos</th>
+                  <th class="text-center">Total</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-resumen-modulo">
+                <!-- Dinámico -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <h6 class="fw-bold text-primary border-bottom pb-2">
+            <i class="bi bi-people me-1"></i>2. Cumplimiento de Acuerdos por Responsable
+          </h6>
+          <div class="table-responsive">
+            <table class="table table-bordered table-striped align-middle text-sm">
+              <thead class="table-dark">
+                <tr>
+                  <th>Responsable</th>
+                  <th class="text-center">Asignados</th>
+                  <th class="text-center text-success">Resueltos</th>
+                  <th class="text-center">% Cumplimiento</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-resumen-responsable">
+                <!-- Dinámico -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer bg-light py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" onclick="imprimirElemento('resumen-printable-container')">
+          <i class="bi bi-printer me-1"></i>Imprimir Resumen
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

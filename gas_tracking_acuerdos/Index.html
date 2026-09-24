@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <title>Control y Seguimiento de Acuerdos PMO</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --pmo-navy: #1A365D;
+      --pmo-blue: #2B6CB0;
+      --pmo-bg: #F7FAFC;
+    }
+    body {
+      background-color: var(--pmo-bg);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #2D3748;
+    }
+    .fs-7 { font-size: 0.85rem; }
+    .extra-small { font-size: 0.75rem; }
+    .cursor-pointer { cursor: pointer; }
+    .card-dashboard {
+      transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    .card-dashboard:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
+    }
+    .status-badge {
+      font-size: 0.75rem;
+      padding: 0.35em 0.65em;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    /* Estilos de tabla e hilos */
+    .row-vencido {
+      background-color: #FFF5F5 !important;
+    }
+    .row-resuelto {
+      background-color: #F0FFF4 !important;
+    }
+    .row-informativo {
+      background-color: #F7FAFC !important;
+    }
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      .printable-area, .printable-area * {
+        visibility: visible;
+      }
+      .printable-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Navbar / Header -->
+  <nav class="navbar navbar-expand-lg navbar-dark shadow-sm mb-4" style="background-color: var(--pmo-navy);">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="#">
+        <i class="bi bi-kanban fs-4"></i>
+        <span>PMO Tracking - Control de Acuerdos y Ajustes</span>
+      </a>
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-sm btn-outline-light" onclick="cargarTodo()" title="Recargar datos">
+          <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+        </button>
+        <span class="navbar-text text-white-50 small d-none d-sm-inline">
+          <i class="bi bi-person-circle me-1"></i>Google Apps Script Web App
+        </span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Contenedor Principal -->
+  <div class="container-fluid px-4">
+    <!-- Incluir Componentes -->
+    <?!= include('Dashboard'); ?>
+    <?!= include('Tabla'); ?>
+    <?!= include('Formulario'); ?>
+    <?!= include('Reportes'); ?>
+  </div>
+
+  <!-- Footer -->
+  <footer class="py-3 my-4 border-top text-center text-muted extra-small">
+    Sistema PMO de Seguimiento y Control de Acuerdos | Poder Judicial &copy; 2025
+  </footer>
+
+  <!-- Bootstrap 5 JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Scripts JavaScript Principales de la App -->
+  <script>
+    // Estado Global
+    var ALL_REGISTROS = [];
+    var FILTERED_REGISTROS = [];
+    var ALL_CATALOGOS = {};
+    var SORT_KEY = 'noGral';
+    var SORT_ASC = false;
+
+    // Inicialización al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+      cargarTodo();
+    });
+
+    function cargarTodo() {
+      mostrarToast('Cargando datos...', 'info');
+
+      // 1. Obtener Catálogos
+      google.script.run
+        .withSuccessHandler(function(catalogos) {
+          ALL_CATALOGOS = catalogos;
+          poblarCatalogosUI(catalogos);
+
+          // 2. Obtener Registros
+          google.script.run
+            .withSuccessHandler(function(registros) {
+              ALL_REGISTROS = registros;
+              aplicarFiltros();
+              actualizarResumenDashboard();
+              mostrarToast('Datos actualizados correctamente.', 'success');
+            })
+            .withFailureHandler(function(err) {
+              mostrarToast('Error al cargar registros: ' + err.message, 'danger');
+            })
+            .getRegistros();
+        })
+        .withFailureHandler(function(err) {
+          mostrarToast('Error al cargar catálogos: ' + err.message, 'danger');
+        })
+        .getCatalogos();
+    }
+
+    function actualizarResumenDashboard() {
+      google.script.run
+        .withSuccessHandler(function(dataDash) {
+          var k = dataDash.kpis;
+          document.getElementById('kpi-total').innerText = k.totalAcuerdos || 0;
+          document.getElementById('kpi-pendientes').innerText = k.pendientes || 0;
+          document.getElementById('kpi-vencidos').innerText = k.vencidos || 0;
+          document.getElementById('kpi-resueltos').innerText = k.resueltos || 0;
+          document.getElementById('kpi-firmar').innerText = k.pendientesPorFirmar || 0;
+          document.getElementById('kpi-informativos').innerText = k.informativos || 0;
+
+          renderTablaResumenModulo(dataDash.resumenPorModulo);
+          renderTablaResumenResponsable(dataDash.resumenPorResponsable);
+        })
+        .getResumenDashboard();
+    }
+
+    function poblarCatalogosUI(cat) {
+      // Filtros
+      llenarSelect('filtro-modulo', cat.modulos, '-- Módulo --');
+      llenarSelect('filtro-tiposesion', cat.tiposSesion, '-- Tipo Sesión --');
+
+      var responsables = [];
+      if (cat.participantes) {
+        cat.participantes.forEach(function(p) {
+          if (p.nombre && responsables.indexOf(p.nombre) === -1) {
+            responsables.push(p.nombre);
+          }
+        });
+      }
+      llenarSelect('filtro-responsable', responsables, '-- Responsable --');
+
+      // Formulario Registro Único
+      llenarSelect('reg-tipoSesion', cat.tiposSesion);
+      llenarSelect('reg-etapaProyecto', cat.etapasProyecto);
+      llenarSelect('reg-modulo', cat.modulos);
+      llenarSelect('reg-origenAcuerdo', cat.origenes);
+      llenarSelect('reg-tipoObservacion', cat.tiposObservacion);
+      llenarSelect('reg-prioridad', cat.prioridades);
+      llenarSelect('reg-estatus', cat.estatus);
+      llenarSelect('reg-estatusFirma', cat.estatusFirma);
+
+      // Formulario Captura Masiva
+      llenarSelect('batch-tipoSesion', cat.tiposSesion);
+      llenarSelect('batch-etapaProyecto', cat.etapasProyecto);
+      llenarSelect('batch-modulo', cat.modulos);
+
+      // Autocomplete datalist
+      var datalist = document.getElementById('lista-participantes');
+      datalist.innerHTML = '';
+      responsables.forEach(function(r) {
+        var opt = document.createElement('option');
+        opt.value = r;
+        datalist.appendChild(opt);
+      });
+    }
+
+    function llenarSelect(elementId, arrayData, firstOptionText) {
+      var select = document.getElementById(elementId);
+      if (!select) return;
+      select.innerHTML = '';
+      if (firstOptionText) {
+        var defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.innerText = firstOptionText;
+        select.appendChild(defaultOpt);
+      }
+      if (arrayData && Array.isArray(arrayData)) {
+        arrayData.forEach(function(item) {
+          var opt = document.createElement('option');
+          opt.value = item;
+          opt.innerText = item;
+          select.appendChild(opt);
+        });
+      }
+    }
+
+    function aplicarFiltros() {
+      var q = (document.getElementById('filtro-busqueda').value || '').toLowerCase().trim();
+      var est = document.getElementById('filtro-estatus').value;
+      var mod = document.getElementById('filtro-modulo').value;
+      var pri = document.getElementById('filtro-prioridad').value;
+      var ses = document.getElementById('filtro-tiposesion').value;
+      var resp = document.getElementById('filtro-responsable').value;
+
+      var todayStr = new Date().toISOString().substring(0, 10);
+
+      FILTERED_REGISTROS = ALL_REGISTROS.filter(function(r) {
+        if (q && (r.acuerdo || '').toLowerCase().indexOf(q) === -1 && (r.folioMinuta || '').toLowerCase().indexOf(q) === -1) {
+          return false;
+        }
+        if (est === 'VENCIDO') {
+          if (!(r.estatus === 'Pendiente' && r.fechaCompromiso && r.fechaCompromiso < todayStr)) {
+            return false;
+          }
+        } else if (est && r.estatus !== est) {
+          return false;
+        }
+        if (mod && r.modulo !== mod) return false;
+        if (pri && r.prioridad !== pri) return false;
+        if (ses && r.tipoSesion !== ses) return false;
+        if (resp && r.resp !== resp) return false;
+
+        return true;
+      });
+
+      ordenarTabla(SORT_KEY, false);
+    }
+
+    function limpiarFiltros() {
+      document.getElementById('filtro-busqueda').value = '';
+      document.getElementById('filtro-estatus').value = '';
+      document.getElementById('filtro-modulo').value = '';
+      document.getElementById('filtro-prioridad').value = '';
+      document.getElementById('filtro-tiposesion').value = '';
+      document.getElementById('filtro-responsable').value = '';
+      aplicarFiltros();
+    }
+
+    function ordenarTabla(colKey, toggle) {
+      if (toggle !== false) {
+        if (SORT_KEY === colKey) {
+          SORT_ASC = !SORT_ASC;
+        } else {
+          SORT_KEY = colKey;
+          SORT_ASC = true;
+        }
+      }
+
+      FILTERED_REGISTROS.sort(function(a, b) {
+        var valA = a[colKey] !== undefined ? a[colKey] : '';
+        var valB = b[colKey] !== undefined ? b[colKey] : '';
+
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return SORT_ASC ? valA - valB : valB - valA;
+        }
+        var strA = String(valA).toLowerCase();
+        var strB = String(valB).toLowerCase();
+        if (strA < strB) return SORT_ASC ? -1 : 1;
+        if (strA > strB) return SORT_ASC ? 1 : -1;
+        return 0;
+      });
+
+      renderTabla(FILTERED_REGISTROS);
+    }
+
+    function renderTabla(registros) {
+      var tbody = document.getElementById('tbody-registros');
+      document.getElementById('contador-registros').innerText = registros.length + ' registros';
+
+      if (registros.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4 text-muted">No se encontraron acuerdos con los filtros seleccionados.</td></tr>';
+        return;
+      }
+
+      var todayStr = new Date().toISOString().substring(0, 10);
+      var html = '';
+
+      registros.forEach(function(r) {
+        var isVencido = (r.estatus === 'Pendiente' && r.fechaCompromiso && r.fechaCompromiso < todayStr);
+        var rowClass = '';
+        var badgeEstatus = '';
+
+        if (isVencido) {
+          rowClass = 'row-vencido';
+          badgeEstatus = '<span class="badge bg-danger text-white"><i class="bi bi-exclamation-triangle-fill me-1"></i>Pendiente Vencido</span>';
+        } else if (r.estatus === 'Pendiente') {
+          badgeEstatus = '<span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Pendiente</span>';
+        } else if (r.estatus === 'Resuelto') {
+          rowClass = 'row-resuelto';
+          badgeEstatus = '<span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Resuelto</span>';
+        } else if (r.estatus === 'Informativo') {
+          rowClass = 'row-informativo';
+          badgeEstatus = '<span class="badge bg-secondary"><i class="bi bi-info-circle me-1"></i>Informativo</span>';
+        } else {
+          badgeEstatus = '<span class="badge bg-light text-dark">' + escapeHtml(r.estatus) + '</span>';
+        }
+
+        var badgeFirma = (r.estatusFirma === 'Firmado')
+          ? '<span class="badge bg-success extra-small"><i class="bi bi-check-all me-1"></i>Firmado</span>'
+          : '<span class="badge bg-outline-secondary border text-muted extra-small"><i class="bi bi-pen me-1"></i>Por Firmar</span>';
+
+        var badgePrioridad = '';
+        if (r.prioridad === 'Alta') badgePrioridad = '<span class="badge bg-danger">Alta</span>';
+        else if (r.prioridad === 'Media') badgePrioridad = '<span class="badge bg-primary">Media</span>';
+        else badgePrioridad = '<span class="badge bg-info text-dark">Baja</span>';
+
+        html += '<tr class="' + rowClass + '" ondblclick="abrirEdicionRapida(' + r.noGral + ', \'' + escapeHtml(r.estatus) + '\', \'' + escapeHtml(r.estatusFirma) + '\')">';
+        html += '<td class="fw-bold text-center">' + r.noGral + '</td>';
+        html += '<td><span class="font-monospace text-primary fw-semibold cursor-pointer" onclick="abrirVerMinuta(\'' + escapeHtml(r.folioMinuta) + '\')" title="Ver Minuta Completa">' + escapeHtml(r.folioMinuta) + '</span></td>';
+        html += '<td class="text-center"><span class="badge bg-light text-dark border">' + escapeHtml(r.tipoSesion) + '</span></td>';
+        html += '<td class="small fw-semibold">' + escapeHtml(r.modulo) + '</td>';
+        html += '<td class="extra-small text-muted">' + escapeHtml(r.tipoObservacion) + '</td>';
+        html += '<td><div class="fw-semibold text-wrap" style="max-width: 320px;">' + escapeHtml(r.acuerdo) + '</div>';
+        if (r.trackingComentarios) {
+          html += '<div class="extra-small text-muted mt-1"><i class="bi bi-link-45deg"></i> ' + escapeHtml(r.trackingComentarios) + '</div>';
+        }
+        html += '</td>';
+        html += '<td class="small fw-semibold">' + escapeHtml(r.resp) + '</td>';
+        html += '<td class="small font-monospace ' + (isVencido ? 'text-danger fw-bold' : '') + '">' + escapeHtml(r.fechaCompromiso) + '</td>';
+        html += '<td class="text-center">' + badgePrioridad + '</td>';
+        html += '<td class="text-center">' + badgeEstatus + '</td>';
+        html += '<td class="text-center">' + badgeFirma + '</td>';
+        html += '<td class="text-center text-nowrap">';
+        html += '<button class="btn btn-xs btn-outline-primary me-1" onclick="abrirEditarRegistro(' + r.noGral + ')" title="Editar Formulario Completo"><i class="bi bi-pencil"></i></button>';
+        html += '<button class="btn btn-xs btn-outline-dark me-1" onclick="abrirEdicionRapida(' + r.noGral + ', \'' + escapeHtml(r.estatus) + '\', \'' + escapeHtml(r.estatusFirma) + '\')" title="Cambio Rápido de Estatus"><i class="bi bi-lightning-charge"></i></button>';
+        html += '<button class="btn btn-xs btn-outline-info" onclick="abrirDetalleRegistro(' + r.noGral + ')" title="Detalle e Historial"><i class="bi bi-eye"></i></button>';
+        html += '</td>';
+        html += '</tr>';
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    // Modal Form Logic
+    function abrirModalNuevoRegistro() {
+      document.getElementById('modalRegistroTitulo').innerHTML = '<i class="bi bi-plus-circle me-2"></i>Nuevo Registro de Acuerdo';
+      document.getElementById('formRegistro').reset();
+      document.getElementById('reg-noGral').value = '';
+      document.getElementById('reg-fechaSesion').value = new Date().toISOString().substring(0, 10);
+      document.getElementById('reg-fechaSolicitud').value = new Date().toISOString().substring(0, 10);
+      actualizarFolioPreview();
+
+      var modal = new bootstrap.Modal(document.getElementById('modalRegistro'));
+      modal.show();
+    }
+
+    function abrirEditarRegistro(noGral) {
+      var r = ALL_REGISTROS.find(function(item) { return item.noGral === noGral; });
+      if (!r) return;
+
+      document.getElementById('modalRegistroTitulo').innerHTML = '<i class="bi bi-pencil-square me-2"></i>Editar Registro #' + noGral;
+      document.getElementById('reg-noGral').value = r.noGral;
+      document.getElementById('reg-tipoSesion').value = r.tipoSesion;
+      document.getElementById('reg-fechaSesion').value = r.fechaSesion;
+      document.getElementById('reg-etapaProyecto').value = r.etapaProyecto;
+      document.getElementById('reg-modulo').value = r.modulo;
+      document.getElementById('reg-folioMinuta').value = r.folioMinuta;
+      document.getElementById('reg-nombreMinuta').value = r.nombreMinuta;
+      document.getElementById('reg-origenAcuerdo').value = r.origenAcuerdo;
+      document.getElementById('reg-fechaSolicitud').value = r.fechaSolicitud;
+      document.getElementById('reg-tipoObservacion').value = r.tipoObservacion;
+      document.getElementById('reg-noEnMin').value = r.noEnMin || 1;
+      document.getElementById('reg-prioridad').value = r.prioridad;
+      document.getElementById('reg-acuerdo').value = r.acuerdo;
+      document.getElementById('reg-sol').value = r.sol;
+      document.getElementById('reg-resp').value = r.resp;
+      document.getElementById('reg-fechaCompromiso').value = r.fechaCompromiso;
+      document.getElementById('reg-estatus').value = r.estatus;
+      document.getElementById('reg-estatusFirma').value = r.estatusFirma;
+      document.getElementById('reg-comentariosProveedor').value = r.comentariosProveedor;
+      document.getElementById('reg-observacionesPmo').value = r.observacionesPmo;
+      document.getElementById('reg-trackingComentarios').value = r.trackingComentarios;
+      document.getElementById('reg-nube').value = r.nube;
+
+      var modal = new bootstrap.Modal(document.getElementById('modalRegistro'));
+      modal.show();
+    }
+
+    function actualizarFolioPreview() {
+      var noGral = document.getElementById('reg-noGral').value;
+      if (noGral) return; // Si estamos editando, mantener el folio existente
+
+      var etapa = document.getElementById('reg-etapaProyecto').value;
+      var tipo = document.getElementById('reg-tipoSesion').value;
+      var fecha = document.getElementById('reg-fechaSesion').value;
+      var modulo = document.getElementById('reg-modulo').value;
+
+      google.script.run
+        .withSuccessHandler(function(folio) {
+          document.getElementById('reg-folioMinuta').value = folio;
+        })
+        .generarFolioMinuta(etapa, tipo, fecha, modulo);
+    }
+
+    function guardarRegistro() {
+      var noGral = document.getElementById('reg-noGral').value;
+      var dataObj = {
+        tipoSesion: document.getElementById('reg-tipoSesion').value,
+        fechaSesion: document.getElementById('reg-fechaSesion').value,
+        etapaProyecto: document.getElementById('reg-etapaProyecto').value,
+        modulo: document.getElementById('reg-modulo').value,
+        folioMinuta: document.getElementById('reg-folioMinuta').value,
+        nombreMinuta: document.getElementById('reg-nombreMinuta').value,
+        origenAcuerdo: document.getElementById('reg-origenAcuerdo').value,
+        fechaSolicitud: document.getElementById('reg-fechaSolicitud').value,
+        tipoObservacion: document.getElementById('reg-tipoObservacion').value,
+        noEnMin: document.getElementById('reg-noEnMin').value,
+        prioridad: document.getElementById('reg-prioridad').value,
+        acuerdo: document.getElementById('reg-acuerdo').value,
+        sol: document.getElementById('reg-sol').value,
+        resp: document.getElementById('reg-resp').value,
+        fechaCompromiso: document.getElementById('reg-fechaCompromiso').value,
+        estatus: document.getElementById('reg-estatus').value,
+        estatusFirma: document.getElementById('reg-estatusFirma').value,
+        comentariosProveedor: document.getElementById('reg-comentariosProveedor').value,
+        observacionesPmo: document.getElementById('reg-observacionesPmo').value,
+        trackingComentarios: document.getElementById('reg-trackingComentarios').value,
+        nube: document.getElementById('reg-nube').value
+      };
+
+      // Validaciones obligatorias
+      if (!dataObj.acuerdo.trim() || !dataObj.resp.trim() || !dataObj.prioridad.trim() || !dataObj.fechaCompromiso.trim()) {
+        mostrarToast('Por favor completa todos los campos obligatorios (*).', 'warning');
+        return;
+      }
+
+      mostrarToast('Guardando registro...', 'info');
+
+      if (noGral) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            mostrarToast('Registro #' + noGral + ' actualizado correctamente.', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalRegistro')).hide();
+            cargarTodo();
+          })
+          .withFailureHandler(function(err) {
+            mostrarToast('Error al actualizar: ' + err.message, 'danger');
+          })
+          .updateRegistro(noGral, dataObj);
+      } else {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            mostrarToast('Registro guardado exitosamente con NO. GRAL ' + res.noGral, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('modalRegistro')).hide();
+            cargarTodo();
+          })
+          .withFailureHandler(function(err) {
+            mostrarToast('Error al crear registro: ' + err.message, 'danger');
+          })
+          .appendRegistro(dataObj);
+      }
+    }
+
+    // Quick Edit Status
+    function abrirEdicionRapida(noGral, estatusActual, firmaActual) {
+      document.getElementById('rapido-noGral').value = noGral;
+      document.getElementById('rapido-estatus').value = estatusActual || 'Pendiente';
+      document.getElementById('rapido-estatusFirma').value = firmaActual || 'Pendiente por Firmar';
+
+      var modal = new bootstrap.Modal(document.getElementById('modalEdicionRapida'));
+      modal.show();
+    }
+
+    function guardarEstatusRapido() {
+      var noGral = document.getElementById('rapido-noGral').value;
+      var est = document.getElementById('rapido-estatus').value;
+      var fir = document.getElementById('rapido-estatusFirma').value;
+
+      mostrarToast('Actualizando estatus...', 'info');
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          mostrarToast('Estatus de registro #' + noGral + ' actualizado.', 'success');
+          bootstrap.Modal.getInstance(document.getElementById('modalEdicionRapida')).hide();
+          cargarTodo();
+        })
+        .withFailureHandler(function(err) {
+          mostrarToast('Error al actualizar estatus: ' + err.message, 'danger');
+        })
+        .updateEstatusRapido(noGral, est, fir);
+    }
+
+    // Captura Masiva
+    function abrirModalCapturaMasiva() {
+      document.getElementById('batch-fechaSesion').value = new Date().toISOString().substring(0, 10);
+      document.getElementById('batch-nombreMinuta').value = '';
+      document.getElementById('tbody-batch').innerHTML = '';
+      actualizarFolioBatchPreview();
+      agregarFilaBatch();
+      agregarFilaBatch();
+
+      var modal = new bootstrap.Modal(document.getElementById('modalCapturaMasiva'));
+      modal.show();
+    }
+
+    function actualizarFolioBatchPreview() {
+      var etapa = document.getElementById('batch-etapaProyecto').value;
+      var tipo = document.getElementById('batch-tipoSesion').value;
+      var fecha = document.getElementById('batch-fechaSesion').value;
+      var modulo = document.getElementById('batch-modulo').value;
+
+      google.script.run
+        .withSuccessHandler(function(folio) {
+          document.getElementById('batch-folioMinuta').value = folio;
+        })
+        .generarFolioMinuta(etapa, tipo, fecha, modulo);
+    }
+
+    function agregarFilaBatch() {
+      var tbody = document.getElementById('tbody-batch');
+      var rowCount = tbody.children.length + 1;
+
+      var tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="text-center fw-bold">${rowCount}</td>
+        <td>
+          <select class="form-select form-select-sm batch-item-tipoObs">
+            ${ALL_CATALOGOS.tiposObservacion ? ALL_CATALOGOS.tiposObservacion.map(t => `<option value="${t}">${t}</option>`).join('') : ''}
+          </select>
+        </td>
+        <td>
+          <textarea class="form-control form-control-sm batch-item-acuerdo" rows="2" placeholder="Acuerdo..." required></textarea>
+        </td>
+        <td>
+          <input type="text" class="form-control form-control-sm batch-item-resp" list="lista-participantes" placeholder="Responsable" required>
+        </td>
+        <td>
+          <input type="date" class="form-control form-control-sm batch-item-fechaCompromiso" required>
+        </td>
+        <td>
+          <select class="form-select form-select-sm batch-item-prioridad" required>
+            <option value="Alta">Alta</option>
+            <option value="Media" selected>Media</option>
+            <option value="Baja">Baja</option>
+          </select>
+        </td>
+        <td>
+          <select class="form-select form-select-sm batch-item-estatus">
+            <option value="Pendiente" selected>Pendiente</option>
+            <option value="Resuelto">Resuelto</option>
+            <option value="Informativo">Informativo</option>
+          </select>
+        </td>
+        <td class="text-center">
+          <button type="button" class="btn btn-xs btn-outline-danger" onclick="this.closest('tr').remove()" title="Eliminar"><i class="bi bi-trash"></i></button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function guardarCapturaMasiva() {
+      var common = {
+        tipoSesion: document.getElementById('batch-tipoSesion').value,
+        fechaSesion: document.getElementById('batch-fechaSesion').value,
+        etapaProyecto: document.getElementById('batch-etapaProyecto').value,
+        modulo: document.getElementById('batch-modulo').value,
+        folioMinuta: document.getElementById('batch-folioMinuta').value,
+        nombreMinuta: document.getElementById('batch-nombreMinuta').value
+      };
+
+      var rows = document.querySelectorAll('#tbody-batch tr');
+      var items = [];
+
+      for (var i = 0; i < rows.length; i++) {
+        var tr = rows[i];
+        var acuerdo = tr.querySelector('.batch-item-acuerdo').value;
+        var resp = tr.querySelector('.batch-item-resp').value;
+        var fechaCompromiso = tr.querySelector('.batch-item-fechaCompromiso').value;
+        var prioridad = tr.querySelector('.batch-item-prioridad').value;
+        var tipoObs = tr.querySelector('.batch-item-tipoObs').value;
+        var estatus = tr.querySelector('.batch-item-estatus').value;
+
+        if (!acuerdo.trim() || !resp.trim() || !fechaCompromiso.trim()) {
+          mostrarToast('Por favor completa los campos obligatorios en el acuerdo #' + (i + 1), 'warning');
+          return;
+        }
+
+        items.push({
+          tipoObservacion: tipoObs,
+          acuerdo: acuerdo,
+          resp: resp,
+          fechaCompromiso: fechaCompromiso,
+          prioridad: prioridad,
+          estatus: estatus,
+          estatusFirma: 'Pendiente por Firmar'
+        });
+      }
+
+      mostrarToast('Guardando lote de ' + items.length + ' acuerdos...', 'info');
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          mostrarToast('Se registraron ' + res.count + ' acuerdos exitosamente en ' + res.folioMinuta, 'success');
+          bootstrap.Modal.getInstance(document.getElementById('modalCapturaMasiva')).hide();
+          cargarTodo();
+        })
+        .withFailureHandler(function(err) {
+          mostrarToast('Error al guardar masivamente: ' + err.message, 'danger');
+        })
+        .appendRegistrosBatch({ common: common, items: items });
+    }
+
+    // Detalle e Historial
+    function abrirDetalleRegistro(noGral) {
+      google.script.run
+        .withSuccessHandler(function(reg) {
+          if (!reg) return;
+
+          document.getElementById('detalle-titulo').innerText = 'Detalle Registro #' + reg.noGral + ' - ' + reg.folioMinuta;
+
+          var html = `
+            <div class="row g-3 mb-4">
+              <div class="col-md-6"><strong>Módulo:</strong> ${escapeHtml(reg.modulo)}</div>
+              <div class="col-md-6"><strong>Etapa Proyecto:</strong> ${escapeHtml(reg.etapaProyecto)}</div>
+              <div class="col-md-6"><strong>Responsable:</strong> ${escapeHtml(reg.resp)}</div>
+              <div class="col-md-6"><strong>Solicitante:</strong> ${escapeHtml(reg.sol)}</div>
+              <div class="col-md-4"><strong>Prioridad:</strong> ${escapeHtml(reg.prioridad)}</div>
+              <div class="col-md-4"><strong>F. Compromiso:</strong> ${escapeHtml(reg.fechaCompromiso)}</div>
+              <div class="col-md-4"><strong>F. Cierre:</strong> ${escapeHtml(reg.fechaCierre || 'N/A')}</div>
+              <div class="col-12"><strong>Acuerdo:</strong> <p class="p-2 bg-light border rounded mb-0">${escapeHtml(reg.acuerdo)}</p></div>
+              <div class="col-md-6"><strong>Comentarios Proveedor:</strong> <p class="p-2 bg-light border rounded mb-0">${escapeHtml(reg.comentariosProveedor || 'Sin comentarios')}</p></div>
+              <div class="col-md-6"><strong>Observaciones PMO:</strong> <p class="p-2 bg-light border rounded mb-0">${escapeHtml(reg.observacionesPmo || 'Sin observaciones')}</p></div>
+            </div>
+
+            <h6 class="fw-bold border-bottom pb-2 text-primary"><i class="bi bi-clock-history me-1"></i>Historial de Cambios</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped align-middle extra-small">
+                <thead class="table-dark">
+                  <tr>
+                    <th>Fecha / Hora</th>
+                    <th>Usuario</th>
+                    <th>Campo Modificado</th>
+                    <th>Valor Anterior</th>
+                    <th>Valor Nuevo</th>
+                  </tr>
+                </thead>
+                <tbody>
+          `;
+
+          if (reg.historial && reg.historial.length > 0) {
+            reg.historial.forEach(function(h) {
+              html += `
+                <tr>
+                  <td>${escapeHtml(h.fecha)}</td>
+                  <td>${escapeHtml(h.usuario)}</td>
+                  <td class="fw-bold text-primary">${escapeHtml(h.campo)}</td>
+                  <td class="text-danger text-decoration-line-through">${escapeHtml(h.valorAnterior)}</td>
+                  <td class="text-success fw-semibold">${escapeHtml(h.valorNuevo)}</td>
+                </tr>
+              `;
+            });
+          } else {
+            html += '<tr><td colspan="5" class="text-center text-muted">Sin historial de cambios registrado.</td></tr>';
+          }
+
+          html += '</tbody></table></div>';
+
+          document.getElementById('detalle-contenido').innerHTML = html;
+          var modal = new bootstrap.Modal(document.getElementById('modalDetalle'));
+          modal.show();
+        })
+        .getRegistroByNoGral(noGral);
+    }
+
+    // Ver Minuta
+    function abrirVerMinuta(folioMinuta) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          var h = res.header || {};
+          var list = res.acuerdos || [];
+
+          var html = `
+            <div class="p-4 bg-white border rounded shadow-sm printable-area">
+              <div class="text-center mb-4 border-bottom pb-3">
+                <h4 class="fw-bold text-primary mb-1">PODER JUDICIAL - SEGUIMIENTO PMO</h4>
+                <h5 class="fw-semibold text-secondary mb-2">CONTROL DE MINUTA Y ACUERDOS</h5>
+                <div class="font-monospace fw-bold fs-5 text-dark">${escapeHtml(folioMinuta)}</div>
+              </div>
+
+              <div class="row g-2 mb-4 extra-small">
+                <div class="col-6 col-md-3"><strong>Nombre Minuta:</strong> ${escapeHtml(h.nombreMinuta || '')}</div>
+                <div class="col-6 col-md-3"><strong>Fecha Sesión:</strong> ${escapeHtml(h.fechaSesion || '')}</div>
+                <div class="col-6 col-md-3"><strong>Tipo Sesión:</strong> ${escapeHtml(h.tipoSesion || '')}</div>
+                <div class="col-6 col-md-3"><strong>Módulo:</strong> ${escapeHtml(h.modulo || '')}</div>
+              </div>
+
+              <table class="table table-bordered align-middle text-sm">
+                <thead class="table-dark">
+                  <tr>
+                    <th style="width: 40px;">#</th>
+                    <th style="width: 110px;">Tipo</th>
+                    <th>Acuerdo u Observación Solicitada</th>
+                    <th style="width: 140px;">Responsable</th>
+                    <th style="width: 100px;">Compromiso</th>
+                    <th style="width: 90px;">Prioridad</th>
+                    <th style="width: 100px;">Estatus</th>
+                  </tr>
+                </thead>
+                <tbody>
+          `;
+
+          list.forEach(function(item, idx) {
+            html += `
+              <tr>
+                <td class="text-center fw-bold">${idx + 1}</td>
+                <td>${escapeHtml(item.tipoObservacion)}</td>
+                <td>${escapeHtml(item.acuerdo)}</td>
+                <td>${escapeHtml(item.resp)}</td>
+                <td class="font-monospace">${escapeHtml(item.fechaCompromiso)}</td>
+                <td>${escapeHtml(item.prioridad)}</td>
+                <td><span class="badge ${item.estatus === 'Resuelto' ? 'bg-success' : 'bg-warning text-dark'}">${escapeHtml(item.estatus)}</span></td>
+              </tr>
+            `;
+          });
+
+          html += `
+                </tbody>
+              </table>
+
+              <div class="row mt-5 pt-4 text-center extra-small">
+                <div class="col-6">
+                  <div class="border-top pt-2">Firma Responsable PMO</div>
+                </div>
+                <div class="col-6">
+                  <div class="border-top pt-2">Firma Líder de Módulo</div>
+                </div>
+              </div>
+            </div>
+          `;
+
+          document.getElementById('minuta-printable-container').innerHTML = html;
+          var modal = new bootstrap.Modal(document.getElementById('modalVerMinuta'));
+          modal.show();
+        })
+        .getMinutaDetalle(folioMinuta);
+    }
+
+    // Modal Resumen Métricas
+    function abrirModalResumenMetricas() {
+      var modal = new bootstrap.Modal(document.getElementById('modalResumenMetricas'));
+      modal.show();
+    }
+
+    function renderTablaResumenModulo(modList) {
+      var tbody = document.getElementById('tbody-resumen-modulo');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      if (!modList || modList.length === 0) return;
+
+      modList.forEach(function(m) {
+        var tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="fw-semibold">${escapeHtml(m.modulo)}</td>
+          <td class="text-center text-warning fw-bold">${m.pendientes}</td>
+          <td class="text-center text-success fw-bold">${m.resueltos}</td>
+          <td class="text-center text-secondary">${m.informativos}</td>
+          <td class="text-center fw-bold">${m.total}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderTablaResumenResponsable(respList) {
+      var tbody = document.getElementById('tbody-resumen-responsable');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      if (!respList || respList.length === 0) return;
+
+      respList.forEach(function(r) {
+        var tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="fw-semibold">${escapeHtml(r.responsable)}</td>
+          <td class="text-center fw-bold">${r.asignados}</td>
+          <td class="text-center text-success fw-bold">${r.resueltos}</td>
+          <td class="text-center"><span class="badge bg-primary">${r.porcentaje}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Importación de Datos
+    function abrirModalImportar() {
+      document.getElementById('importar-texto').value = '';
+      var modal = new bootstrap.Modal(document.getElementById('modalImportar'));
+      modal.show();
+    }
+
+    function procesarImportacion() {
+      var txt = document.getElementById('importar-texto').value.trim();
+      if (!txt) {
+        mostrarToast('Ingresa datos para importar.', 'warning');
+        return;
+      }
+
+      var parsed = null;
+      try {
+        parsed = JSON.parse(txt);
+      } catch (e) {
+        mostrarToast('Formato JSON inválido. Revisa la estructura.', 'danger');
+        return;
+      }
+
+      if (!Array.isArray(parsed)) {
+        mostrarToast('El JSON debe ser un arreglo de objetos.', 'warning');
+        return;
+      }
+
+      mostrarToast('Importando ' + parsed.length + ' registros...', 'info');
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          mostrarToast(res.message, 'success');
+          bootstrap.Modal.getInstance(document.getElementById('modalImportar')).hide();
+          cargarTodo();
+        })
+        .withFailureHandler(function(err) {
+          mostrarToast('Error en importación: ' + err.message, 'danger');
+        })
+        .importarDesdeHoja(parsed);
+    }
+
+    // Utilidades
+    function imprimirElemento(elemId) {
+      var contenido = document.getElementById(elemId).innerHTML;
+      var win = window.open('', '_blank');
+      win.document.write('<html><head><title>Impresión PMO</title>');
+      win.document.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">');
+      win.document.write('</head><body class="p-4" onload="window.print();window.close();">');
+      win.document.write(contenido);
+      win.document.write('</body></html>');
+      win.document.close();
+    }
+
+    function mostrarToast(mensaje, tipo) {
+      var container = document.getElementById('toastContainer');
+      var bgClass = 'bg-' + (tipo || 'primary');
+      var textClass = (tipo === 'warning' || tipo === 'light') ? 'text-dark' : 'text-white';
+
+      var toastEl = document.createElement('div');
+      toastEl.className = 'toast align-items-center border-0 ' + bgClass + ' ' + textClass;
+      toastEl.setAttribute('role', 'alert');
+      toastEl.setAttribute('aria-live', 'assertive');
+      toastEl.setAttribute('aria-atomic', 'true');
+
+      toastEl.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body fw-semibold">
+            ${escapeHtml(mensaje)}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+      `;
+
+      container.appendChild(toastEl);
+      var toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+      toast.show();
+      toastEl.addEventListener('hidden.bs.toast', function() {
+        toastEl.remove();
+      });
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
