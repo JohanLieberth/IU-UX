@@ -1,0 +1,165 @@
+<!-- Tabla y Filtros Component -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white py-3 border-0">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <h5 class="mb-0 text-primary fw-bold">
+        <i class="bi bi-list-task me-2"></i>Seguimiento y Control de Acuerdos
+      </h5>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-primary fw-bold" onclick="abrirModalNuevoRegistro()">
+          <i class="bi bi-plus-circle me-1"></i>Nuevo Registro
+        </button>
+        <button class="btn btn-outline-primary fw-semibold" onclick="abrirModalCapturaMasiva()">
+          <i class="bi bi-layers me-1"></i>Captura Masiva Minuta
+        </button>
+        <button class="btn btn-outline-info fw-semibold" onclick="abrirModalResumenMetricas()">
+          <i class="bi bi-pie-chart-fill me-1"></i>Resumen Módulos/Resp
+        </button>
+        <button class="btn btn-outline-secondary fw-semibold" onclick="abrirModalImportar()">
+          <i class="bi bi-file-earmark-arrow-up me-1"></i>Importar Datos
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barra de Filtros -->
+  <div class="card-body bg-light border-top border-bottom py-3">
+    <div class="row g-2 align-items-center">
+      <div class="col-12 col-md-4 col-lg-3">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+          <input type="text" id="filtro-busqueda" class="form-control" placeholder="Buscar en acuerdo..." oninput="aplicarFiltros()">
+        </div>
+      </div>
+
+      <div class="col-6 col-md-2 col-lg-2">
+        <select id="filtro-estatus" class="form-select form-select-sm" onchange="aplicarFiltros()">
+          <option value="">-- Estatus --</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="Resuelto">Resuelto</option>
+          <option value="Informativo">Informativo</option>
+          <option value="VENCIDO">Vencidos (Pendientes)</option>
+        </select>
+      </div>
+
+      <div class="col-6 col-md-2 col-lg-2">
+        <select id="filtro-modulo" class="form-select form-select-sm" onchange="aplicarFiltros()">
+          <option value="">-- Módulo --</option>
+        </select>
+      </div>
+
+      <div class="col-6 col-md-2 col-lg-2">
+        <select id="filtro-prioridad" class="form-select form-select-sm" onchange="aplicarFiltros()">
+          <option value="">-- Prioridad --</option>
+          <option value="Alta">Alta</option>
+          <option value="Media">Media</option>
+          <option value="Baja">Baja</option>
+        </select>
+      </div>
+
+      <div class="col-6 col-md-2 col-lg-2">
+        <select id="filtro-tiposesion" class="form-select form-select-sm" onchange="aplicarFiltros()">
+          <option value="">-- Tipo Sesión --</option>
+        </select>
+      </div>
+
+      <div class="col-12 col-md-3 col-lg-2">
+        <select id="filtro-responsable" class="form-select form-select-sm" onchange="aplicarFiltros()">
+          <option value="">-- Responsable --</option>
+        </select>
+      </div>
+
+      <div class="col-12 col-md-auto ms-auto d-flex gap-2">
+        <button class="btn btn-sm btn-outline-danger" onclick="limpiarFiltros()" title="Restablecer filtros">
+          <i class="bi bi-x-circle me-1"></i>Limpiar
+        </button>
+        <span class="badge bg-secondary d-flex align-items-center px-2 py-1" id="contador-registros">
+          0 registros
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor Tabla -->
+  <div class="table-responsive" style="max-height: 650px; overflow-y: auto;">
+    <table class="table table-hover table-bordered align-middle mb-0 text-sm fs-7" id="tabla-registros">
+      <thead class="table-dark text-nowrap sticky-top shadow-sm" style="z-index: 1;">
+        <tr>
+          <th style="width: 50px;" class="cursor-pointer" onclick="ordenarTabla('noGral')">
+            NO. GRAL <i class="bi bi-arrow-down-up ms-1"></i>
+          </th>
+          <th style="width: 110px;" class="cursor-pointer" onclick="ordenarTabla('folioMinuta')">
+            FOLIO MINUTA <i class="bi bi-arrow-down-up ms-1"></i>
+          </th>
+          <th style="width: 90px;" class="cursor-pointer" onclick="ordenarTabla('tipoSesion')">
+            SESIÓN <i class="bi bi-arrow-down-up ms-1"></i>
+          </th>
+          <th style="width: 140px;" class="cursor-pointer" onclick="ordenarTabla('modulo')">
+            MÓDULO <i class="bi bi-arrow-down-up ms-1"></i>
+          </th>
+          <th style="width: 110px;">TIPO OBS.</th>
+          <th style="min-width: 250px;">ACUERDO O AJUSTE SOLICITADO</th>
+          <th style="width: 140px;" class="cursor-pointer" onclick="ordenarTabla('resp')">
+            RESPONSABLE <i class="bi bi-arrow-down-up ms-1"></i>
+          </th>
+          <th style="width: 110px;" class="cursor-pointer" onclick="ordenarTabla('fechaCompromiso')">
+            F. COMPROMISO <i class="bi bi-arrow-down-up ms-1"></i>
+          </th>
+          <th style="width: 90px;" class="cursor-pointer" onclick="ordenarTabla('prioridad')">
+            PRIORIDAD <i class="bi bi-arrow-down-up ms-1"></i>
+          </th>
+          <th style="width: 110px;" class="cursor-pointer" onclick="ordenarTabla('estatus')">
+            ESTATUS <i class="bi bi-arrow-down-up ms-1"></i>
+          </th>
+          <th style="width: 120px;">FIRMA</th>
+          <th style="width: 120px;" class="text-center">ACCIONES</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-registros">
+        <tr>
+          <td colspan="12" class="text-center py-4 text-muted">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+            Cargando registros...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Edición Rápida de Estatus -->
+<div class="modal fade" id="modalEdicionRapida" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content shadow border-0">
+      <div class="modal-header bg-primary text-white py-2">
+        <h6 class="modal-title fw-bold"><i class="bi bi-lightning-charge me-1"></i>Estatus Rápido</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="rapido-noGral">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Estatus</label>
+          <select id="rapido-estatus" class="form-select form-select-sm">
+            <option value="Pendiente">Pendiente</option>
+            <option value="Resuelto">Resuelto</option>
+            <option value="Informativo">Informativo</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Estatus de Firma</label>
+          <select id="rapido-estatusFirma" class="form-select form-select-sm">
+            <option value="Pendiente por Firmar">Pendiente por Firmar</option>
+            <option value="Firmado">Firmado</option>
+          </select>
+        </div>
+        <div class="form-text text-muted extra-small">
+          * Si cambias el estatus a "Resuelto", la fecha de cierre se establecerá automáticamente al día de hoy.
+        </div>
+      </div>
+      <div class="modal-footer bg-light py-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="guardarEstatusRapido()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
