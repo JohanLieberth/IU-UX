@@ -554,7 +554,7 @@
                 '<td>' + escapeHtml(ac.solicitante || '-') + '</td>' +
                 '<td><span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>' + escapeHtml(ac.responsable || '-') + '</span></td>' +
                 '<td>' +
-                  '<select class="form-select form-select-sm seg-acuerdo-tracking" multiple data-selected="' + escapeHtml(ac.tracking || '') + '" style="height: 55px;">' +
+                  '<select class="form-select form-select-sm seg-acuerdo-tracking" data-selected="' + escapeHtml(ac.tracking || '') + '">' +
                   '</select>' +
                 '</td>' +
                 '<td><input type="text" class="form-control form-control-sm seg-acuerdo-num-ant" value="' + escapeHtml(ac.num_acuerdo_anterior || '') + '" placeholder="Ej. 1, 2"></td>' +
@@ -594,15 +594,11 @@
     const minutas = APP_DATA.minutas || [];
 
     selects.forEach(function(select) {
-      const rawVal = select.getAttribute('data-selected') || '';
-      let selectedValues = [];
-      if (select.selectedOptions && select.selectedOptions.length > 0) {
-        selectedValues = Array.from(select.selectedOptions).map(function(o) { return o.value; });
-      } else if (rawVal) {
-        selectedValues = rawVal.split(',').map(function(s) { return s.trim(); });
-      }
+      const rawVal = select.getAttribute('data-selected') ? select.getAttribute('data-selected').trim() : '';
 
-      select.innerHTML = '';
+      select.innerHTML = '<option value="">-- Sin Minuta Anterior --</option>';
+
+      let isSelected = false;
 
       minutas.forEach(function(m) {
         if (currentMinutaId && m.id_minuta === currentMinutaId) return;
@@ -611,21 +607,21 @@
         const opt = document.createElement('option');
         opt.value = folioVal;
         opt.textContent = labelText;
-        if (selectedValues.includes(folioVal)) {
+
+        if (rawVal && (rawVal === folioVal || rawVal.split(',').map(function(s){return s.trim();}).includes(folioVal))) {
           opt.selected = true;
+          isSelected = true;
         }
         select.appendChild(opt);
       });
 
-      selectedValues.forEach(function(val) {
-        if (val && !minutas.some(function(m) { return (m.folio === val || m.titulo === val || m.id_minuta === val); })) {
-          const opt = document.createElement('option');
-          opt.value = val;
-          opt.textContent = val;
-          opt.selected = true;
-          select.appendChild(opt);
-        }
-      });
+      if (rawVal && !isSelected) {
+        const opt = document.createElement('option');
+        opt.value = rawVal;
+        opt.textContent = rawVal;
+        opt.selected = true;
+        select.appendChild(opt);
+      }
     });
   }
 
@@ -640,16 +636,13 @@
       const inputNumAnt = tr.querySelector('.seg-acuerdo-num-ant');
       const inputNotas = tr.querySelector('.seg-acuerdo-notas');
 
-      let trackArr = [];
-      if (selectTrack && selectTrack.selectedOptions) {
-        trackArr = Array.from(selectTrack.selectedOptions).map(function(o) { return o.value; });
-      }
+      const trackVal = selectTrack ? selectTrack.value : '';
 
       if (idAcuerdo && selectEst) {
         cambios.push({
           id_acuerdo: idAcuerdo,
           estado: selectEst.value,
-          tracking: trackArr.join(', '),
+          tracking: trackVal,
           num_acuerdo_anterior: inputNumAnt ? inputNumAnt.value.trim() : '',
           notas: inputNotas ? inputNotas.value : ''
         });
@@ -1304,7 +1297,7 @@
         '<td><span class="badge ' + badgeClass + '">' + escapeHtml(ac.estado_calculado) + '</span></td>' +
         '<td><div class="fw-bold">' + escapeHtml(ac.nombre_proyecto) + '</div><small class="text-muted">' + escapeHtml(ac.titulo_minuta) + ' (' + escapeHtml(ac.folio_minuta || 'N/A') + ')</small></td>' +
         '<td class="text-end">' +
-          '<button class="btn btn-sm btn-outline-primary" onclick="openModalEstadoAcuerdo(\'' + escapeJs(ac.id_acuerdo) + '\', \'' + escapeJs(ac.estado_calculado) + '\', \'' + escapeJs(ac.motivo_cancelacion || '') + '\')">' +
+          '<button class="btn btn-sm btn-outline-primary" onclick="openModalEstadoAcuerdo(\'' + escapeJs(ac.id_acuerdo) + '\', \'' + escapeJs(ac.estado_calculado) + '\', \'' + escapeJs(ac.motivo_cancelacion || '') + '\', \'' + escapeJs(ac.tracking || '') + '\', \'' + escapeJs(ac.num_acuerdo_anterior || '') + '\')">' +
             '<i class="bi bi-arrow-repeat"></i> Cambiar' +
           '</button>' +
         '</td>' +
@@ -1335,19 +1328,32 @@
     if (selTracking) {
       selTracking.setAttribute('data-selected', trackingVal);
       const minutas = APP_DATA.minutas || [];
-      const selectedValues = trackingVal ? trackingVal.split(',').map(function(s) { return s.trim(); }) : [];
-      selTracking.innerHTML = '';
+      selTracking.innerHTML = '<option value="">-- Sin Minuta Anterior --</option>';
+
+      let isSelected = false;
+      const rawVal = trackingVal ? trackingVal.trim() : '';
+
       minutas.forEach(function(m) {
         const folioVal = (m.folio && m.folio !== 'N/A') ? m.folio : (m.titulo || m.id_minuta);
         const labelText = (m.folio && m.folio !== 'N/A') ? (m.folio + ' - ' + m.titulo) : m.titulo;
         const opt = document.createElement('option');
         opt.value = folioVal;
         opt.textContent = labelText;
-        if (selectedValues.includes(folioVal)) {
+
+        if (rawVal && (rawVal === folioVal || rawVal.split(',').map(function(s){return s.trim();}).includes(folioVal))) {
           opt.selected = true;
+          isSelected = true;
         }
         selTracking.appendChild(opt);
       });
+
+      if (rawVal && !isSelected) {
+        const opt = document.createElement('option');
+        opt.value = rawVal;
+        opt.textContent = rawVal;
+        opt.selected = true;
+        selTracking.appendChild(opt);
+      }
     }
 
     toggleMotivoCancelacion(document.getElementById('acuerdo_nuevo_estado').value);
@@ -1375,11 +1381,7 @@
     const numAntVal = document.getElementById('acuerdo_num_ant_cambio').value;
 
     const selTracking = document.getElementById('acuerdo_tracking_cambio');
-    let trackArr = [];
-    if (selTracking && selTracking.selectedOptions) {
-      trackArr = Array.from(selTracking.selectedOptions).map(function(o) { return o.value; });
-    }
-    const trackingStr = trackArr.join(', ');
+    const trackingStr = selTracking ? selTracking.value : '';
 
     showLoading(true);
     google.script.run
