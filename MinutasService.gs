@@ -103,7 +103,16 @@ function guardarMinutaCompleta(payload) {
       fecha_creacion: fechaCreacion
     };
 
+    let existingAcuerdosMap = {};
     if (isEdit) {
+      const oldAcuerdos = getSheetDataAsObjects('Acuerdos').filter(ac => ac.id_minuta === idMinuta);
+      oldAcuerdos.forEach((ac, idx) => {
+        existingAcuerdosMap[idx] = ac;
+        if (ac.descripcion) {
+          existingAcuerdosMap[ac.descripcion.trim()] = ac;
+        }
+      });
+
       const rows = minutasSheet.getDataRange().getValues();
       const idColIdx = minHeaders.indexOf('id_minuta');
       let targetRow = -1;
@@ -157,20 +166,21 @@ function guardarMinutaCompleta(payload) {
     if (Array.isArray(payload.acuerdos)) {
       const acHeaders = acuerdosSheet.getRange(1, 1, 1, Math.max(1, acuerdosSheet.getLastColumn())).getValues()[0];
       payload.acuerdos.forEach((item, index) => {
+        const oldAc = existingAcuerdosMap[item.descripcion ? item.descripcion.trim() : ''] || existingAcuerdosMap[index] || {};
         const acRowData = {
           id_acuerdo: generateId(),
           id_minuta: idMinuta,
           numero: index + 1,
           tipo: item.tipo || 'Acuerdo',
           descripcion: item.descripcion || '',
-          prioridad: item.prioridad || 'Media',
-          solicitante: item.solicitante || '',
-          responsable: item.responsable || '',
-          tracking: item.tracking || '',
-          num_acuerdo_anterior: item.num_acuerdo_anterior || '',
+          prioridad: item.prioridad || oldAc.prioridad || 'Media',
+          solicitante: item.solicitante || oldAc.solicitante || '',
+          responsable: item.responsable || oldAc.responsable || '',
+          tracking: (item.tracking !== undefined && item.tracking !== '') ? item.tracking : (oldAc.tracking || ''),
+          num_acuerdo_anterior: (item.num_acuerdo_anterior !== undefined && item.num_acuerdo_anterior !== '') ? item.num_acuerdo_anterior : (oldAc.num_acuerdo_anterior || ''),
           fecha_cumplimiento: formatDateISO(item.fecha_cumplimiento),
-          estado: item.estado || 'Pendiente',
-          motivo_cancelacion: item.motivo_cancelacion || ''
+          estado: item.estado || oldAc.estado || 'Pendiente',
+          motivo_cancelacion: item.motivo_cancelacion || oldAc.motivo_cancelacion || ''
         };
         const rowVal = acHeaders.map(h => acRowData[h] !== undefined ? acRowData[h] : '');
         acuerdosSheet.appendRow(rowVal);

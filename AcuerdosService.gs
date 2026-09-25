@@ -124,7 +124,7 @@ function obtenerAcuerdosFiltrados(filtros) {
   }
 }
 
-function actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivoCancelacion) {
+function actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivoCancelacion, tracking, numAcuerdoAnterior) {
   try {
     const ss = getSpreadsheet();
     const sheet = ss.getSheetByName('Acuerdos');
@@ -132,13 +132,17 @@ function actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivoCancelacion) {
     const headers = data[0];
     const idColIdx = headers.indexOf('id_acuerdo');
     const estadoColIdx = headers.indexOf('estado');
+    const trackingColIdx = headers.indexOf('tracking');
+    const numAntColIdx = headers.indexOf('num_acuerdo_anterior');
     const motivoColIdx = headers.indexOf('motivo_cancelacion');
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][idColIdx >= 0 ? idColIdx : 0] === idAcuerdo) {
-        if (estadoColIdx >= 0) sheet.getRange(i + 1, estadoColIdx + 1).setValue(nuevoEstado);
+        if (estadoColIdx >= 0 && nuevoEstado !== undefined) sheet.getRange(i + 1, estadoColIdx + 1).setValue(nuevoEstado);
+        if (trackingColIdx >= 0 && tracking !== undefined) sheet.getRange(i + 1, trackingColIdx + 1).setValue(tracking);
+        if (numAntColIdx >= 0 && numAcuerdoAnterior !== undefined) sheet.getRange(i + 1, numAntColIdx + 1).setValue(numAcuerdoAnterior);
         if (motivoColIdx >= 0) sheet.getRange(i + 1, motivoColIdx + 1).setValue(motivoCancelacion || '');
-        return buildResponse(true, { id_acuerdo: idAcuerdo, nuevo_estado: nuevoEstado }, 'Estado de acuerdo actualizado.');
+        return buildResponse(true, { id_acuerdo: idAcuerdo, nuevo_estado: nuevoEstado }, 'Estado y seguimiento de acuerdo actualizado.');
       }
     }
 
@@ -165,6 +169,8 @@ function guardarSeguimientoAcuerdosMinuta(cambios) {
     const headers = data[0];
     const idColIdx = headers.indexOf('id_acuerdo');
     const estadoColIdx = headers.indexOf('estado');
+    const trackingColIdx = headers.indexOf('tracking');
+    const numAntColIdx = headers.indexOf('num_acuerdo_anterior');
     const motivoColIdx = headers.indexOf('motivo_cancelacion');
 
     cambios.forEach(item => {
@@ -172,6 +178,12 @@ function guardarSeguimientoAcuerdosMinuta(cambios) {
         if (data[i][idColIdx >= 0 ? idColIdx : 0] === item.id_acuerdo) {
           if (item.estado && estadoColIdx >= 0) {
             sheet.getRange(i + 1, estadoColIdx + 1).setValue(item.estado);
+          }
+          if (item.tracking !== undefined && trackingColIdx >= 0) {
+            sheet.getRange(i + 1, trackingColIdx + 1).setValue(item.tracking);
+          }
+          if (item.num_acuerdo_anterior !== undefined && numAntColIdx >= 0) {
+            sheet.getRange(i + 1, numAntColIdx + 1).setValue(item.num_acuerdo_anterior);
           }
           if (motivoColIdx >= 0) {
             sheet.getRange(i + 1, motivoColIdx + 1).setValue(item.notas !== undefined ? item.notas : '');

@@ -54,10 +54,12 @@
             <th style="width: 50px;">No.</th>
             <th>Descripción</th>
             <th style="width: 110px;">Tipo</th>
+            <th style="width: 90px;">Prioridad</th>
             <th>Responsable(s)</th>
-            <th style="width: 140px;">Fecha Cumplimiento</th>
+            <th>Tracking / Ac. Ant.</th>
+            <th style="width: 130px;">Fecha Cumplimiento</th>
             <th style="width: 120px;">Estado</th>
-            <th>Proyecto</th>
+            <th>Proyecto / Minuta</th>
             <th class="text-end" style="width: 120px;">Acciones</th>
           </tr>
         </thead>
@@ -72,28 +74,39 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <form id="formEstadoAcuerdo" onsubmit="handleGuardarEstadoAcuerdo(event)">
-        <div class="modal-header">
-          <h5 class="modal-title fw-bold">Cambiar Estado de Acuerdo</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-header bg-slate-900 text-white">
+          <h5 class="modal-title fw-bold">Actualizar Seguimiento de Acuerdo</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body p-4">
           <input type="hidden" id="acuerdo_id_cambio">
           <div class="mb-3">
-            <label class="form-label fw-semibold">Estado</label>
+            <label class="form-label fw-semibold">Estatus <span class="text-danger">*</span></label>
             <select class="form-select" id="acuerdo_nuevo_estado" onchange="toggleMotivoCancelacion(this.value)">
               <option value="Pendiente">Pendiente</option>
+              <option value="Por vencer">Por vencer</option>
+              <option value="Vencido">Vencido</option>
               <option value="Atendido">Atendido</option>
               <option value="Cancelado">Cancelado</option>
             </select>
           </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tracking (Folios de Minutas Anteriores)</label>
+            <select class="form-select" id="acuerdo_tracking_cambio" multiple style="height: 70px;">
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="acuerdo_num_ant_cambio" class="form-label fw-semibold">Número de acuerdo de la minuta anterior</label>
+            <input type="text" class="form-control" id="acuerdo_num_ant_cambio" placeholder="Ej. 1, 2">
+          </div>
           <div class="mb-3 d-none" id="groupMotivoCancelacion">
-            <label for="acuerdo_motivo_cancelacion" class="form-label fw-semibold">Motivo de Cancelación</label>
-            <textarea class="form-control" id="acuerdo_motivo_cancelacion" rows="3" placeholder="Escriba la razón de la cancelación..."></textarea>
+            <label for="acuerdo_motivo_cancelacion" class="form-label fw-semibold">Motivo / Notas de Seguimiento</label>
+            <textarea class="form-control" id="acuerdo_motivo_cancelacion" rows="3" placeholder="Escriba notas o la razón de la cancelación..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary px-4">Guardar Cambio</button>
+          <button type="submit" class="btn btn-primary px-4">Guardar Cambios</button>
         </div>
       </form>
     </div>

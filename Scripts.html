@@ -32,16 +32,94 @@
     'Cuxtal'
   ];
 
-  const SUBDIRECCIONES = [
-    'Subdirección General',
+  const SUBDIRECCIONES = Array.from(new Set([
+    'Secretaría Técnica de la Oficina de Presidencia',
+    'Secretario Técnico del Despacho de la Presidenta Municipal',
+    'Secretaría Técnica de Vinculación',
+    'Subdirección del Despacho de Presidencia Municipal',
+    'Unidad de Transparencia y Gestión Archivística',
+    'Subdirección de la Secretaría Municipal',
+    'Subdirección de Medios',
+    'Subdirección de Imagen Institucional',
+    'Subdirección de Secretaría Técnica',
+    'Subdirección de Prevención Social del Delito y Participación Ciudadana',
+    'Subdirección de Áreas de Administración',
+    'Subdirección General Operativa',
+    'Subdirección de Auditoría y Seguimiento de Actos de Fiscalización',
+    'Subdirección de Normatividad y Responsabilidades',
+    'Subdirección de Participación Social',
+    'Subdirección de la Unidad de Atención Ciudadana',
+    'Secretaría Técnica de Planeación, Seguimiento y Evaluación',
+    'Subdirección de Planeación e Información',
+    'Subdirección de Seguimiento y Evaluación',
+    'Secretaría Técnica de Gestión Administrativa',
+    'Secretaría Técnica de Coordinación de Entidades Paramunicipales',
+    'Subdirección de Relaciones Públicas y Protocolo',
+    'Subdirección de Logística',
+    'Subdirección de Proyectos Especiales',
+    'Secretaría Técnica del Servicio Público de Mercados',
+    'Subdirección Especializada en Establecimientos Fijos, Semifijos y Ambulantaje',
+    'Subdirección de Mercados Públicos',
+    'Subdirección de Consejería Jurídica',
+    'Subdirección de Asuntos Jurídicos',
+    'Subdirección de Gobernación',
     'Subdirección Operativa',
-    'Subdirección Administrativa',
-    'Subdirección Técnica',
+    'Subdirección de Administración y de Proveeduría',
+    'Subdirección de Servicios Internos',
+    'Subdirección de Recursos Humanos',
     'Subdirección de Mejora Regulatoria',
+    'Subdirección de Patrimonio Municipal',
+    'Subdirección de Ventanillas Únicas',
+    'Subdirección de Ingresos',
+    'Subdirección de Egresos',
+    'Subdirección de Presupuestos y Control del Gasto',
+    'Subdirección de Contabilidad y Administración',
+    'Subdirección de Política Tributaria',
+    'Subdirección de Ingeniería de Software',
+    'Subdirección de Infraestructura',
     'Subdirección de Innovación',
-    'Secretaría Técnica',
-    'N/A'
-  ];
+    'Secretaría Técnica de la Unidad de Turismo',
+    'Subdirección de Vinculación',
+    'Subdirección de Desarrollo Integral de la Familia (DIF Municipal)',
+    'Subdirección de Promoción Social',
+    'Subdirección de Participación Ciudadana',
+    'Subdirección de Infraestructura Social',
+    'Subdirección de Atención a Comisarías',
+    'Subdirección de Salud',
+    'Subdirección de Deportes',
+    'Subdirección de Administración',
+    'Subdirección de Educación',
+    'Subdirección de Bienestar Económico',
+    'Subdirección de Prosperidad',
+    'Subdirección de Conservación y Difusión Patrimonial',
+    'Subdirección de Cultura',
+    'Secretario de Gestión Integral de Residuos Municipales',
+    'Subdirector de Residuos Municipales',
+    'Subdirección de Planeación y Proyectos de Residuos Municipales',
+    'Subdirección de Calidad y Atención Ciudadana',
+    'Subdirección de Gestión y Control del Territorio',
+    'Subdirección de Patrimonio Cultural',
+    'Subdirección Jurídica',
+    'Subdirección de Nuevos Desarrollos',
+    'Subdirección de Obras e Infraestructura',
+    'Subdirección de Vías Terrestres',
+    'Subdirección de Planeación y Organización de Obras',
+    'Subdirección de Servicios Generales',
+    'Subdirección de Servicios Oriente',
+    'Subdirección de Servicios Básicos Poniente',
+    'Subdirección de Verificación y Gestión',
+    'Subdirección de Bienestar Animal',
+    'Subdirección de Infraestructura Verde',
+    'Subdirección de Operaciones y Procesos',
+    'Subdirección Técnica',
+    'Despacho del Administrador',
+    'Secretaría de Finanzas',
+    'Secretaría Operativa y Mercadotecnia',
+    'Subdirección Administrativa',
+    'Subdirección de Operaciones y Mantenimiento',
+    'Subdirección de Servicios Espaciales',
+    'Secretaría Técnica'
+  ]));
 
   const ETAPAS_PROYECTO = [
     'Inicio',
@@ -437,7 +515,7 @@
 
   function openSeguimientoAcuerdosMinuta(idMinuta) {
     document.getElementById('seg_minuta_id').value = idMinuta;
-    document.getElementById('tbodySeguimientoMinutaAcuerdos').innerHTML = '<tr><td colspan="10" class="text-center py-3 text-muted"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Cargando acuerdos...</td></tr>';
+    document.getElementById('tbodySeguimientoMinutaAcuerdos').innerHTML = '<tr><td colspan="11" class="text-center py-3 text-muted"><div class="spinner-border spinner-border-sm me-2" role="status"></div>Cargando acuerdos...</td></tr>';
 
     showLoading(true);
     google.script.run
@@ -455,7 +533,7 @@
           tbody.innerHTML = '';
 
           if (acuerdos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted py-3">Esta minuta no contiene acciones ni acuerdos registrados.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-3">Esta minuta no contiene acciones ni acuerdos registrados.</td></tr>';
           } else {
             acuerdos.forEach(function(ac, idx) {
               const est = ac.estado_calculado || 'Pendiente';
@@ -467,7 +545,6 @@
 
               const prioBadge = ac.prioridad === 'Alta' ? 'bg-danger' : (ac.prioridad === 'Baja' ? 'bg-info' : 'bg-warning text-dark');
               const tipoBadge = ac.tipo === 'Informativo' ? 'bg-info' : (ac.tipo === 'Ajuste Técnico' ? 'bg-purple text-white' : 'bg-primary');
-              const trackingStr = (ac.tracking ? ac.tracking : '') + (ac.num_acuerdo_anterior ? (' (Ac: ' + ac.num_acuerdo_anterior + ')') : '');
 
               tbody.innerHTML += '<tr data-id-acuerdo="' + escapeJs(ac.id_acuerdo) + '">' +
                 '<td class="text-center fw-bold">' + (idx + 1) + '</td>' +
@@ -476,7 +553,11 @@
                 '<td><span class="badge ' + prioBadge + '">' + escapeHtml(ac.prioridad || 'Media') + '</span></td>' +
                 '<td>' + escapeHtml(ac.solicitante || '-') + '</td>' +
                 '<td><span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>' + escapeHtml(ac.responsable || '-') + '</span></td>' +
-                '<td>' + escapeHtml(trackingStr || '-') + '</td>' +
+                '<td>' +
+                  '<select class="form-select form-select-sm seg-acuerdo-tracking" multiple data-selected="' + escapeHtml(ac.tracking || '') + '" style="height: 55px;">' +
+                  '</select>' +
+                '</td>' +
+                '<td><input type="text" class="form-control form-control-sm seg-acuerdo-num-ant" value="' + escapeHtml(ac.num_acuerdo_anterior || '') + '" placeholder="Ej. 1, 2"></td>' +
                 '<td>' + formatDateDisplayJS(ac.fecha_cumplimiento) + '</td>' +
                 '<td>' +
                   '<select class="form-select form-select-sm seg-acuerdo-estado">' +
@@ -490,6 +571,7 @@
                 '<td><textarea class="form-control form-control-sm seg-acuerdo-notas" rows="1" placeholder="Agregar notas o motivo...">' + escapeHtml(ac.motivo_cancelacion || '') + '</textarea></td>' +
               '</tr>';
             });
+            syncSeguimientoTrackingOptions(idMinuta);
           }
 
           const modal = new bootstrap.Modal(document.getElementById('modalSeguimientoMinuta'));
@@ -505,6 +587,48 @@
       .obtenerDetalleMinuta(idMinuta);
   }
 
+  function syncSeguimientoTrackingOptions(currentMinutaId) {
+    const selects = document.querySelectorAll('#tbodySeguimientoMinutaAcuerdos .seg-acuerdo-tracking');
+    if (selects.length === 0) return;
+
+    const minutas = APP_DATA.minutas || [];
+
+    selects.forEach(function(select) {
+      const rawVal = select.getAttribute('data-selected') || '';
+      let selectedValues = [];
+      if (select.selectedOptions && select.selectedOptions.length > 0) {
+        selectedValues = Array.from(select.selectedOptions).map(function(o) { return o.value; });
+      } else if (rawVal) {
+        selectedValues = rawVal.split(',').map(function(s) { return s.trim(); });
+      }
+
+      select.innerHTML = '';
+
+      minutas.forEach(function(m) {
+        if (currentMinutaId && m.id_minuta === currentMinutaId) return;
+        const folioVal = (m.folio && m.folio !== 'N/A') ? m.folio : (m.titulo || m.id_minuta);
+        const labelText = (m.folio && m.folio !== 'N/A') ? (m.folio + ' - ' + m.titulo) : m.titulo;
+        const opt = document.createElement('option');
+        opt.value = folioVal;
+        opt.textContent = labelText;
+        if (selectedValues.includes(folioVal)) {
+          opt.selected = true;
+        }
+        select.appendChild(opt);
+      });
+
+      selectedValues.forEach(function(val) {
+        if (val && !minutas.some(function(m) { return (m.folio === val || m.titulo === val || m.id_minuta === val); })) {
+          const opt = document.createElement('option');
+          opt.value = val;
+          opt.textContent = val;
+          opt.selected = true;
+          select.appendChild(opt);
+        }
+      });
+    });
+  }
+
   function handleGuardarSeguimientoMinuta(e) {
     e.preventDefault();
 
@@ -512,12 +636,21 @@
     document.querySelectorAll('#tbodySeguimientoMinutaAcuerdos tr[data-id-acuerdo]').forEach(function(tr) {
       const idAcuerdo = tr.getAttribute('data-id-acuerdo');
       const selectEst = tr.querySelector('.seg-acuerdo-estado');
+      const selectTrack = tr.querySelector('.seg-acuerdo-tracking');
+      const inputNumAnt = tr.querySelector('.seg-acuerdo-num-ant');
       const inputNotas = tr.querySelector('.seg-acuerdo-notas');
+
+      let trackArr = [];
+      if (selectTrack && selectTrack.selectedOptions) {
+        trackArr = Array.from(selectTrack.selectedOptions).map(function(o) { return o.value; });
+      }
 
       if (idAcuerdo && selectEst) {
         cambios.push({
           id_acuerdo: idAcuerdo,
           estado: selectEst.value,
+          tracking: trackArr.join(', '),
+          num_acuerdo_anterior: inputNumAnt ? inputNumAnt.value.trim() : '',
           notas: inputNotas ? inputNotas.value : ''
         });
       }
@@ -598,8 +731,6 @@
                   ac.prioridad || 'Media',
                   ac.solicitante || '',
                   ac.responsable || '',
-                  ac.tracking || '',
-                  ac.num_acuerdo_anterior || '',
                   formatDateISOJS(ac.fecha_cumplimiento)
                 );
               });
@@ -608,7 +739,6 @@
             }
 
             syncParticipantesOptions();
-            syncTrackingOptions();
             if (!minuta.folio || minuta.folio === 'N/A') {
               generarFolioMinutaUI();
             }
@@ -719,14 +849,12 @@
     renumberTable('tbodyOrden');
   }
 
-  function addAcuerdoRow(tipo, descripcion, prioridad, solicitante, responsable, tracking, numAnt, fecha) {
+  function addAcuerdoRow(tipo, descripcion, prioridad, solicitante, responsable, fecha) {
     if (tipo === undefined) tipo = 'Acuerdo';
     if (descripcion === undefined) descripcion = '';
     if (prioridad === undefined) prioridad = 'Media';
     if (solicitante === undefined) solicitante = '';
     if (responsable === undefined) responsable = '';
-    if (tracking === undefined) tracking = '';
-    if (numAnt === undefined) numAnt = '';
     if (fecha === undefined) fecha = '';
 
     const tbody = document.getElementById('tbodyAcuerdos');
@@ -766,18 +894,12 @@
         '<select class="form-select form-select-sm acuerdo-resp" multiple required data-selected="' + escapeHtml(responsable) + '" style="height: 65px;">' +
         '</select>' +
       '</td>' +
-      '<td>' +
-        '<select class="form-select form-select-sm acuerdo-tracking" multiple data-selected="' + escapeHtml(tracking) + '" style="height: 65px;">' +
-        '</select>' +
-      '</td>' +
-      '<td><input type="text" class="form-control form-control-sm acuerdo-num-ant" value="' + escapeHtml(numAnt) + '" placeholder="Ej. 1, 2"></td>' +
       '<td><input type="date" class="form-control form-control-sm acuerdo-fecha" value="' + escapeHtml(fecha) + '" required></td>' +
       '<td class="text-center"><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeRow(this);"><i class="bi bi-trash"></i></button></td>';
 
     tbody.appendChild(tr);
     renumberTable('tbodyAcuerdos');
     syncParticipantesOptions();
-    syncTrackingOptions();
 
     const selectTipo = tr.querySelector('.acuerdo-tipo');
     if (selectTipo) handleTipoChange(selectTipo);
@@ -958,20 +1080,12 @@
         respArr = Array.from(selectResp.selectedOptions).map(function(o) { return o.value; });
       }
 
-      const selectTrack = tr.querySelector('.acuerdo-tracking');
-      let trackArr = [];
-      if (selectTrack && selectTrack.selectedOptions) {
-        trackArr = Array.from(selectTrack.selectedOptions).map(function(o) { return o.value; });
-      }
-
       acuerdos.push({
         tipo: tr.querySelector('.acuerdo-tipo') ? tr.querySelector('.acuerdo-tipo').value : 'Acuerdo',
         descripcion: tr.querySelector('.acuerdo-desc').value,
         prioridad: tr.querySelector('.acuerdo-prioridad') ? tr.querySelector('.acuerdo-prioridad').value : 'Media',
         solicitante: solArr.join(', '),
         responsable: respArr.join(', '),
-        tracking: trackArr.join(', '),
-        num_acuerdo_anterior: tr.querySelector('.acuerdo-num-ant') ? tr.querySelector('.acuerdo-num-ant').value : '',
         fecha_cumplimiento: tr.querySelector('.acuerdo-fecha').value,
         estado: 'Pendiente'
       });
@@ -1175,16 +1289,20 @@
     acuerdosList.forEach(function(ac, index) {
       const badgeClass = getBadgeClass(ac.estado_calculado);
       const motivo = ac.motivo_cancelacion ? '<br><small class="text-muted"><em>Motivo: ' + escapeHtml(ac.motivo_cancelacion) + '</em></small>' : '';
-      const tipoBadge = ac.tipo === 'Informativo' ? 'bg-info' : 'bg-primary';
+      const prioBadge = ac.prioridad === 'Alta' ? 'bg-danger' : (ac.prioridad === 'Baja' ? 'bg-info' : 'bg-warning text-dark');
+      const tipoBadge = ac.tipo === 'Informativo' ? 'bg-info' : (ac.tipo === 'Ajuste Técnico' ? 'bg-purple text-white' : 'bg-primary');
+      const trackingText = (ac.tracking ? ac.tracking : '-') + (ac.num_acuerdo_anterior ? (' (Ac: ' + ac.num_acuerdo_anterior + ')') : '');
 
       tbody.innerHTML += '<tr>' +
         '<td class="text-center fw-bold">' + (index + 1) + '</td>' +
         '<td>' + escapeHtml(ac.descripcion) + motivo + '</td>' +
         '<td><span class="badge ' + tipoBadge + '">' + escapeHtml(ac.tipo || 'Acuerdo') + '</span></td>' +
-        '<td><span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>' + escapeHtml(ac.responsable) + '</span></td>' +
+        '<td><span class="badge ' + prioBadge + '">' + escapeHtml(ac.prioridad || 'Media') + '</span></td>' +
+        '<td><span class="badge bg-light text-dark border"><i class="bi bi-person me-1"></i>' + escapeHtml(ac.responsable || '-') + '</span></td>' +
+        '<td>' + escapeHtml(trackingText) + '</td>' +
         '<td>' + formatDateDisplayJS(ac.fecha_cumplimiento) + '</td>' +
         '<td><span class="badge ' + badgeClass + '">' + escapeHtml(ac.estado_calculado) + '</span></td>' +
-        '<td><div class="fw-bold">' + escapeHtml(ac.nombre_proyecto) + '</div><small class="text-muted">' + escapeHtml(ac.titulo_minuta) + '</small></td>' +
+        '<td><div class="fw-bold">' + escapeHtml(ac.nombre_proyecto) + '</div><small class="text-muted">' + escapeHtml(ac.titulo_minuta) + ' (' + escapeHtml(ac.folio_minuta || 'N/A') + ')</small></td>' +
         '<td class="text-end">' +
           '<button class="btn btn-sm btn-outline-primary" onclick="openModalEstadoAcuerdo(\'' + escapeJs(ac.id_acuerdo) + '\', \'' + escapeJs(ac.estado_calculado) + '\', \'' + escapeJs(ac.motivo_cancelacion || '') + '\')">' +
             '<i class="bi bi-arrow-repeat"></i> Cambiar' +
@@ -1203,11 +1321,35 @@
     }
   }
 
-  function openModalEstadoAcuerdo(idAcuerdo, estadoActual, motivo) {
+  function openModalEstadoAcuerdo(idAcuerdo, estadoActual, motivo, trackingVal, numAntVal) {
     if (motivo === undefined) motivo = '';
+    if (trackingVal === undefined) trackingVal = '';
+    if (numAntVal === undefined) numAntVal = '';
+
     document.getElementById('acuerdo_id_cambio').value = idAcuerdo;
     document.getElementById('acuerdo_nuevo_estado').value = (estadoActual === 'Por vencer' || estadoActual === 'Vencido') ? 'Pendiente' : estadoActual;
     document.getElementById('acuerdo_motivo_cancelacion').value = motivo;
+    document.getElementById('acuerdo_num_ant_cambio').value = numAntVal;
+
+    const selTracking = document.getElementById('acuerdo_tracking_cambio');
+    if (selTracking) {
+      selTracking.setAttribute('data-selected', trackingVal);
+      const minutas = APP_DATA.minutas || [];
+      const selectedValues = trackingVal ? trackingVal.split(',').map(function(s) { return s.trim(); }) : [];
+      selTracking.innerHTML = '';
+      minutas.forEach(function(m) {
+        const folioVal = (m.folio && m.folio !== 'N/A') ? m.folio : (m.titulo || m.id_minuta);
+        const labelText = (m.folio && m.folio !== 'N/A') ? (m.folio + ' - ' + m.titulo) : m.titulo;
+        const opt = document.createElement('option');
+        opt.value = folioVal;
+        opt.textContent = labelText;
+        if (selectedValues.includes(folioVal)) {
+          opt.selected = true;
+        }
+        selTracking.appendChild(opt);
+      });
+    }
+
     toggleMotivoCancelacion(document.getElementById('acuerdo_nuevo_estado').value);
 
     const modal = new bootstrap.Modal(document.getElementById('modalEstadoAcuerdo'));
@@ -1220,7 +1362,7 @@
       if (estado === 'Cancelado') {
         group.classList.remove('d-none');
       } else {
-        group.classList.add('d-none');
+        group.classList.remove('d-none');
       }
     }
   }
@@ -1230,6 +1372,14 @@
     const idAcuerdo = document.getElementById('acuerdo_id_cambio').value;
     const nuevoEstado = document.getElementById('acuerdo_nuevo_estado').value;
     const motivo = document.getElementById('acuerdo_motivo_cancelacion').value;
+    const numAntVal = document.getElementById('acuerdo_num_ant_cambio').value;
+
+    const selTracking = document.getElementById('acuerdo_tracking_cambio');
+    let trackArr = [];
+    if (selTracking && selTracking.selectedOptions) {
+      trackArr = Array.from(selTracking.selectedOptions).map(function(o) { return o.value; });
+    }
+    const trackingStr = trackArr.join(', ');
 
     showLoading(true);
     google.script.run
@@ -1248,7 +1398,7 @@
         showLoading(false);
         showToast(err.message, false);
       })
-      .actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivo);
+      .actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivo, trackingStr, numAntVal);
   }
 
   function populateSelects() {
