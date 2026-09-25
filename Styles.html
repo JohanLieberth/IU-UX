@@ -1,0 +1,151 @@
+<style>
+  :root {
+    --sidebar-width: 260px;
+    --primary-color: #0f172a;
+    --primary-hover: #1e293b;
+    --accent-color: #2563eb;
+    --bg-light: #f8fafc;
+  }
+
+  body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-light);
+    color: #334155;
+    overflow-x: hidden;
+  }
+
+  /* Layout */
+  #wrapper {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  #sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--primary-color);
+    color: #fff;
+    transition: all 0.3s ease;
+    z-index: 1000;
+  }
+
+  #sidebar .sidebar-header {
+    padding: 1.5rem 1.25rem;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  #sidebar ul.components {
+    padding: 1rem 0;
+  }
+
+  #sidebar ul li a {
+    padding: 0.85rem 1.25rem;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #94a3b8;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  #sidebar ul li a:hover, #sidebar ul li a.active {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-left: 4px solid var(--accent-color);
+  }
+
+  #content {
+    flex: 1;
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+  }
+
+  /* Cards & Widgets */
+  .stat-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+  }
+
+  .card-custom {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    background-color: #ffffff;
+  }
+
+  /* Estado Badges */
+  .badge-pendiente {
+    background-color: #3b82f6;
+    color: #fff;
+  }
+
+  .badge-por-vencer {
+    background-color: #f59e0b;
+    color: #fff;
+  }
+
+  .badge-vencido {
+    background-color: #ef4444;
+    color: #fff;
+  }
+
+  .badge-atendido {
+    background-color: #10b981;
+    color: #fff;
+  }
+
+  .badge-cancelado {
+    background-color: #6b7280;
+    color: #fff;
+    text-decoration: line-through;
+  }
+
+  /* Form and Dynamic Tables */
+  .table-dynamic input, .table-dynamic select {
+    font-size: 0.875rem;
+  }
+
+  /* Loading Overlay */
+  #loadingOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+  }
+
+  .spinner-custom {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  /* Responsive Sidebar Toggle */
+  @media (max-width: 768px) {
+    #sidebar {
+      margin-left: calc(-1 * var(--sidebar-width));
+    }
+    #sidebar.active {
+      margin-left: 0;
+    }
+    #content {
+      padding: 1rem;
+    }
+  }
+</style>

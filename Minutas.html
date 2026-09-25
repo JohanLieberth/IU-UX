@@ -1,0 +1,262 @@
+<div class="container-fluid fade-in">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold mb-1 text-slate-800">Registro de Minutas</h2>
+      <p class="text-muted mb-0">Crea, edita y genera documentos oficiales para cada reunión.</p>
+    </div>
+    <button class="btn btn-primary rounded-pill px-3" onclick="openModalMinuta()">
+      <i class="bi bi-file-earmark-plus me-1"></i> Nueva Minuta
+    </button>
+  </div>
+
+  <div class="card card-custom p-3">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle w-100" id="tableMinutas">
+        <thead class="table-light">
+          <tr>
+            <th>Folio</th>
+            <th>Título / Minuta</th>
+            <th>Proyecto</th>
+            <th>Fecha Reunión</th>
+            <th>Lugar</th>
+            <th>Documentos</th>
+            <th class="text-end">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Enviar Minuta en PDF por Correo Electrónico -->
+<div class="modal fade" id="modalEnviarEmailMinuta" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="formEnviarEmailMinuta" onsubmit="handleEnviarEmailMinuta(event)">
+        <div class="modal-header bg-slate-900 text-white">
+          <h5 class="modal-title fw-bold" id="modalEnviarEmailMinutaTitle"><i class="bi bi-envelope-paper me-2"></i>Enviar Minuta en PDF por Correo</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <input type="hidden" id="email_minuta_id">
+
+          <div class="mb-3">
+            <label for="email_destinatario" class="form-label fw-semibold">Correo Electrónico del Destinatario <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="email_destinatario" required placeholder="ejemplo@dominio.com">
+            <div class="invalid-feedback">Por favor ingresa un correo electrónico válido.</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="email_mensaje" class="form-label fw-semibold">Mensaje Corto (Opcional)</label>
+            <textarea class="form-control" id="email_mensaje" rows="3" placeholder="Adjunto a este correo encontrará el documento PDF de la minuta de reunión..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary px-4"><i class="bi bi-send me-1"></i> Enviar Correo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Seguimiento de Acuerdos desde Minutas (Modo Lectura + Estatus/Notas) -->
+<div class="modal fade" id="modalSeguimientoMinuta" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold" id="modalSeguimientoMinutaTitle"><i class="bi bi-check2-square me-2"></i>Seguimiento de Acuerdos de la Minuta</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="formSeguimientoMinuta" onsubmit="handleGuardarSeguimientoMinuta(event)">
+          <input type="hidden" id="seg_minuta_id">
+
+          <div class="card bg-light p-3 mb-4 border-0">
+            <h6 class="fw-bold text-slate-800 mb-1" id="seg_minuta_titulo">-</h6>
+            <p class="text-muted small mb-0" id="seg_minuta_sub">-</p>
+          </div>
+
+          <div class="mb-3">
+            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-list-check me-1"></i> 4. ACCIONES Y ACUERDOS (Modo Seguimiento)</h6>
+            <div class="table-responsive">
+              <table class="table table-bordered align-middle" id="tableSeguimientoMinutaAcuerdos">
+                <thead class="table-secondary">
+                  <tr>
+                    <th style="width: 40px;">No.</th>
+                    <th style="width: 100px;">Tipo</th>
+                    <th>Descripción del Acuerdo (Solo Lectura)</th>
+                    <th style="width: 90px;">Prioridad</th>
+                    <th>Solicitante(s)</th>
+                    <th>Responsable(s)</th>
+                    <th>Tracking</th>
+                    <th style="width: 120px;">Fecha Límite</th>
+                    <th style="width: 130px;">Estatus <span class="text-danger">*</span></th>
+                    <th>Notas / Motivo</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodySeguimientoMinutaAcuerdos">
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+            <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-1"></i> Guardar Cambios de Seguimiento</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalMinuta" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-slate-900 text-white">
+        <h5 class="modal-title fw-bold" id="modalMinutaTitle"><i class="bi bi-journal-plus me-2"></i>Nueva Minuta de Reunión</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="formMinuta" onsubmit="handleGuardarMinuta(event)">
+          <input type="hidden" id="minuta_id" name="id_minuta">
+
+          <div class="card bg-light p-3 mb-4 border-0">
+            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-info-circle me-1"></i> 1. DATOS DE LA REUNIÓN</h6>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="minuta_proyecto" class="form-label fw-semibold">Proyecto <span class="text-danger">*</span></label>
+                <select class="form-select" id="minuta_proyecto" required onchange="handleFolioInputChange()">
+                  <option value="">-- Seleccione un Proyecto --</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="minuta_etapa" class="form-label fw-semibold">Etapa del Proyecto <span class="text-danger">*</span></label>
+                <select class="form-select" id="minuta_etapa" required onchange="handleFolioInputChange()">
+                  <option value="">-- Seleccione una Etapa --</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="minuta_dependencia" class="form-label fw-semibold">Dependencia <span class="text-danger">*</span></label>
+                <select class="form-select" id="minuta_dependencia" required onchange="handleFolioInputChange()">
+                  <option value="">-- Seleccione una Dependencia --</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="minuta_subdireccion" class="form-label fw-semibold">Subdirección <span class="text-danger">*</span></label>
+                <select class="form-select" id="minuta_subdireccion" required onchange="handleFolioInputChange()">
+                  <option value="">-- Seleccione una Subdirección --</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="minuta_titulo" class="form-label fw-semibold">Nombre del Proyecto / Reunión <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="minuta_titulo" required placeholder="Ej. Reunión de Avance Semanal">
+              </div>
+              <div class="col-md-6">
+                <label for="minuta_folio" class="form-label fw-semibold">Folio Minuta (Generado Automáticamente)</label>
+                <input type="text" class="form-control bg-light fw-bold text-primary" id="minuta_folio" readonly placeholder="Se generará automáticamente">
+              </div>
+              <div class="col-md-4">
+                <label for="minuta_fecha" class="form-label fw-semibold">Fecha de Reunión <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="minuta_fecha" required onchange="handleFolioInputChange()">
+              </div>
+              <div class="col-md-8">
+                <label for="minuta_lugar" class="form-label fw-semibold">Lugar / Plataforma</label>
+                <input type="text" class="form-control" id="minuta_lugar" placeholder="Ej. Sala 2 / Google Meet">
+              </div>
+              <div class="col-12">
+                <label for="minuta_objetivo" class="form-label fw-semibold">Objetivo de la Reunión</label>
+                <textarea class="form-control" id="minuta_objetivo" rows="2" placeholder="Describa el objetivo principal"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-primary mb-0"><i class="bi bi-people me-1"></i> 2. LISTA DE ASISTENCIA</h6>
+              <button type="button" class="btn btn-sm btn-outline-primary" onclick="addAsistenciaRow()">
+                <i class="bi bi-plus-lg me-1"></i> Agregar Participante
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-bordered align-middle table-dynamic" id="tableAsistencia">
+                <thead class="table-secondary">
+                  <tr>
+                    <th style="width: 50px;">No.</th>
+                    <th>Nombre <span class="text-danger">*</span></th>
+                    <th>Dependencia / Área</th>
+                    <th style="width: 60px;" class="text-center" title="Asistencia Presencial">AP</th>
+                    <th style="width: 60px;" class="text-center" title="Asistencia Telefónica / Virtual">AT</th>
+                    <th style="width: 60px;" class="text-center" title="No Asistió">NA</th>
+                    <th style="width: 50px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyAsistencia">
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-primary mb-0"><i class="bi bi-list-ol me-1"></i> 3. ORDEN DEL DÍA</h6>
+              <button type="button" class="btn btn-sm btn-outline-primary" onclick="addOrdenRow()">
+                <i class="bi bi-plus-lg me-1"></i> Agregar Punto
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-bordered align-middle table-dynamic" id="tableOrden">
+                <thead class="table-secondary">
+                  <tr>
+                    <th style="width: 50px;">No.</th>
+                    <th>Descripción del Punto <span class="text-danger">*</span></th>
+                    <th style="width: 50px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyOrden">
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-primary mb-0"><i class="bi bi-check2-square me-1"></i> 4. ACCIONES Y ACUERDOS</h6>
+              <button type="button" class="btn btn-sm btn-outline-primary" onclick="addAcuerdoRow()">
+                <i class="bi bi-plus-lg me-1"></i> Agregar Acuerdo
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-bordered align-middle table-dynamic" id="tableAcuerdosForm">
+                <thead class="table-secondary">
+                  <tr>
+                    <th style="width: 40px;">No.</th>
+                    <th style="width: 130px;">Tipo <span class="text-danger">*</span></th>
+                    <th>Descripción del Acuerdo <span class="text-danger">*</span></th>
+                    <th style="width: 110px;">Prioridad <span class="text-danger">*</span></th>
+                    <th style="width: 160px;">Solicitante(s)</th>
+                    <th style="width: 160px;">Responsable(s) <span class="text-danger">*</span></th>
+                    <th style="width: 160px;">Tracking</th>
+                    <th style="width: 100px;">No. Ac. Ant.</th>
+                    <th style="width: 130px;">Fecha Límite <span class="text-danger">*</span></th>
+                    <th style="width: 40px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyAcuerdos">
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success px-4"><i class="bi bi-save me-1"></i> Guardar Minuta</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
