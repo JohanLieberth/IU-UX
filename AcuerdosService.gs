@@ -1,0 +1,200 @@
+/**
+ * AcuerdosService.gs - Lógica de estados y seguimiento de acuerdos.
+ */
+
+function calcularEstadoAcuerdo(fechaCumplimiento, estadoActual) {
+  if (estadoActual === 'Atendido' || estadoActual === 'Cancelado') {
+    return estadoActual;
+  }
+
+  if (!fechaCumplimiento) {
+    return estadoActual || 'Pendiente';
+  }
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const fechaLimite = (fechaCumplimiento instanceof Date) ? new Date(fechaCumplimiento) : new Date(fechaCumplimiento);
+  fechaLimite.setHours(0, 0, 0, 0);
+
+  if (isNaN(fechaLimite.getTime())) {
+    return estadoActual || 'Pendiente';
+  }
+
+  const diffTime = fechaLimite.getTime() - hoy.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return 'Vencido';
+  } else if (diffDays >= 0 && diffDays <= 3) {
+    return 'Por vencer';
+  } else {
+    return 'Pendiente';
+  }
+}
+
+function obtenerAcuerdosConEstado() {
+  return obtenerAcuerdosFiltrados({});
+}
+
+/**
+ * Obtiene y filtra los acuerdos directamente desde la pestaña Acuerdos de DB_Sistema_Minutas_Seguimiento.
+ * @param {Object} filtros
+ * @returns {string} JSON
+ */
+function obtenerAcuerdosFiltrados(filtros) {
+  try {
+    if (!filtros) filtros = {};
+
+    const acuerdos = getSheetDataAsObjects('Acuerdos');
+    const minutas = getSheetDataAsObjects('Minutas');
+    const proyectos = getSheetDataAsObjects('Proyectos');
+
+    const minutasMap = {};
+    minutas.forEach(m => minutasMap[m.id_minuta] = m);
+
+    const proyectosMap = {};
+    proyectos.forEach(p => proyectosMap[p.id_proyecto] = p.nombre);
+
+    const fProyecto = (filtros.id_proyecto || '').toString().trim();
+    const fEstado = (filtros.estado || '').toString().trim();
+    const fResponsable = (filtros.responsable || '').toString().trim().toLowerCase();
+    const fFechaInicio = (filtros.fecha_inicio || '').toString().trim();
+    const fFechaFin = (filtros.fecha_fin || '').toString().trim();
+    const fTexto = (filtros.texto || '').toString().trim().toLowerCase();
+
+    const result = [];
+
+    acuerdos.forEach(ac => {
+      const minuta = minutasMap[ac.id_minuta] || {};
+      const idProyecto = (minuta.id_proyecto || '').toString();
+      const nombreProyecto = proyectosMap[idProyecto] || 'Sin Proyecto';
+      const estadoCalculado = calcularEstadoAcuerdo(ac.fecha_cumplimiento, ac.estado);
+      const fechaISO = formatDateISO(ac.fecha_cumplimiento);
+
+      if (fProyecto && idProyecto !== fProyecto) {
+        return;
+      }
+
+      if (fEstado && estadoCalculado !== fEstado) {
+        return;
+      }
+
+      if (fResponsable) {
+        const respList = (ac.responsable || '').toString().toLowerCase().split(',').map(s => s.trim());
+        if (!respList.includes(fResponsable) && !respList.includes('todos')) {
+          return;
+        }
+      }
+
+      if (fFechaInicio && fechaISO && fechaISO < fFechaInicio) {
+        return;
+      }
+
+      if (fFechaFin && fechaISO && fechaISO > fFechaFin) {
+        return;
+      }
+
+      if (fTexto) {
+        const desc = (ac.descripcion || '').toString().toLowerCase();
+        if (!desc.includes(fTexto)) {
+          return;
+        }
+      }
+
+      result.push({
+        ...ac,
+        tipo: ac.tipo || 'Acuerdo',
+        prioridad: ac.prioridad || 'Media',
+        solicitante: ac.solicitante || '',
+        responsable: ac.responsable || '',
+        tracking: ac.tracking || '',
+        num_acuerdo_anterior: ac.num_acuerdo_anterior || '',
+        titulo_minuta: minuta.titulo || 'Sin Minuta',
+        folio_minuta: minuta.folio || 'N/A',
+        id_proyecto: idProyecto,
+        nombre_proyecto: nombreProyecto,
+        estado_calculado: estadoCalculado
+      });
+    });
+
+    return buildResponse(true, result, 'Acuerdos filtrados cargados exitosamente.');
+  } catch (error) {
+    return buildResponse(false, null, 'Error al filtrar acuerdos: ' + error.toString());
+  }
+}
+
+function actualizarEstadoAcuerdo(idAcuerdo, nuevoEstado, motivoCancelacion, tracking, numAcuerdoAnterior) {
+  try {
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('Acuerdos');
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idColIdx = headers.indexOf('id_acuerdo');
+    const estadoColIdx = headers.indexOf('estado');
+    const trackingColIdx = headers.indexOf('tracking');
+    const numAntColIdx = headers.indexOf('num_acuerdo_anterior');
+    const motivoColIdx = headers.indexOf('motivo_cancelacion');
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][idColIdx >= 0 ? idColIdx : 0] === idAcuerdo) {
+        if (estadoColIdx >= 0 && nuevoEstado !== undefined) sheet.getRange(i + 1, estadoColIdx + 1).setValue(nuevoEstado);
+        if (trackingColIdx >= 0 && tracking !== undefined) sheet.getRange(i + 1, trackingColIdx + 1).setValue(tracking);
+        if (numAntColIdx >= 0 && numAcuerdoAnterior !== undefined) sheet.getRange(i + 1, numAntColIdx + 1).setValue(numAcuerdoAnterior);
+        if (motivoColIdx >= 0) sheet.getRange(i + 1, motivoColIdx + 1).setValue(motivoCancelacion || '');
+        return buildResponse(true, { id_acuerdo: idAcuerdo, nuevo_estado: nuevoEstado }, 'Estado y seguimiento de acuerdo actualizado.');
+      }
+    }
+
+    return buildResponse(false, null, 'Acuerdo no encontrado.');
+  } catch (error) {
+    return buildResponse(false, null, 'Error al actualizar acuerdo: ' + error.toString());
+  }
+}
+
+/**
+ * Actualiza en lote los estados y notas de los acuerdos de una minuta.
+ * @param {Array<Object>} cambios
+ * @returns {string} JSON
+ */
+function guardarSeguimientoAcuerdosMinuta(cambios) {
+  try {
+    if (!Array.isArray(cambios) || cambios.length === 0) {
+      return buildResponse(true, null, 'No hubo cambios que guardar.');
+    }
+
+    const ss = getSpreadsheet();
+    const sheet = ss.getSheetByName('Acuerdos');
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idColIdx = headers.indexOf('id_acuerdo');
+    const estadoColIdx = headers.indexOf('estado');
+    const trackingColIdx = headers.indexOf('tracking');
+    const numAntColIdx = headers.indexOf('num_acuerdo_anterior');
+    const motivoColIdx = headers.indexOf('motivo_cancelacion');
+
+    cambios.forEach(item => {
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][idColIdx >= 0 ? idColIdx : 0] === item.id_acuerdo) {
+          if (item.estado && estadoColIdx >= 0) {
+            sheet.getRange(i + 1, estadoColIdx + 1).setValue(item.estado);
+          }
+          if (item.tracking !== undefined && trackingColIdx >= 0) {
+            sheet.getRange(i + 1, trackingColIdx + 1).setValue(item.tracking);
+          }
+          if (item.num_acuerdo_anterior !== undefined && numAntColIdx >= 0) {
+            sheet.getRange(i + 1, numAntColIdx + 1).setValue(item.num_acuerdo_anterior);
+          }
+          if (motivoColIdx >= 0) {
+            sheet.getRange(i + 1, motivoColIdx + 1).setValue(item.notas !== undefined ? item.notas : '');
+          }
+          break;
+        }
+      }
+    });
+
+    return buildResponse(true, null, 'Seguimiento de acuerdos guardado correctamente.');
+  } catch (error) {
+    return buildResponse(false, null, 'Error al guardar seguimiento de acuerdos: ' + error.toString());
+  }
+}
