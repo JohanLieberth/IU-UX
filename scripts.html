@@ -1,0 +1,103 @@
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  /**
+   * Promisified wrapper for google.script.run
+   */
+  function runBackend(functionName, ...args) {
+    showLoader(true);
+    return new Promise((resolve, reject) => {
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        showLoader(false);
+        console.warn('google.script.run not available in local mock context');
+        reject(new Error('google.script.run no disponible. Ejecute en entorno Google Apps Script.'));
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler((result) => {
+          showLoader(false);
+          resolve(result);
+        })
+        .withFailureHandler((err) => {
+          showLoader(false);
+          var msg = err.message || err.toString();
+          showToast(msg, 'danger');
+          reject(err);
+        })[functionName](...args);
+    });
+  }
+
+  function showLoader(show) {
+    var loader = document.getElementById('globalLoader');
+    if (loader) {
+      loader.style.display = show ? 'flex' : 'none';
+    }
+  }
+
+  function showToast(message, type = 'info') {
+    var toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toastContainer';
+      toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+      toastContainer.style.zIndex = '10000';
+      document.body.appendChild(toastContainer);
+    }
+
+    var toastEl = document.createElement('div');
+    toastEl.className = `toast align-items-center text-bg-${type} border-0 show`;
+    toastEl.setAttribute('role', 'alert');
+    toastEl.innerHTML = `
+      <div class="d-flex">
+        <div class="toast-body">${escapeHtml(message)}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    `;
+    toastContainer.appendChild(toastEl);
+    setTimeout(() => { toastEl.remove(); }, 5000);
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function formatCurrency(val) {
+    if (val === null || val === undefined || isNaN(Number(val))) return '$0.00';
+    return '$' + Number(val).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function getStatusBadgeHtml(status) {
+    var st = String(status || '').trim();
+    var cls = 'bg-secondary';
+    switch (st.toLowerCase()) {
+      case 'diagnostico': cls = 'badge-st-diagnostico'; break;
+      case 'en reparacion': case 'en proceso': cls = 'badge-st-en-reparacion'; break;
+      case 'esperando refaccion': cls = 'badge-st-esperando-refaccion'; break;
+      case 'listo para recoleccion': cls = 'badge-st-listo-para-recoleccion'; break;
+      case 'entregado': case 'cerrada': cls = 'badge-st-entregado'; break;
+      case 'entregado parcial': cls = 'badge-st-entregado-parcial'; break;
+      case 'cancelado': case 'cancelada': cls = 'badge-st-cancelado'; break;
+    }
+    return `<span class="badge ${cls}">${escapeHtml(st)}</span>`;
+  }
+
+  function getClientTypeBadgeHtml(tipo) {
+    var t = String(tipo || 'Cliente').trim();
+    if (t.toLowerCase() === 'taller') {
+      return `<span class="badge badge-purple"><i class="fa-solid fa-wrench me-1"></i>TALLER</span>`;
+    }
+    return `<span class="badge bg-primary"><i class="fa-solid fa-user me-1"></i>CLIENTE</span>`;
+  }
+
+  function logoutPortal() {
+    localStorage.removeItem('BITFIX_PORTAL_TOKEN');
+    window.location.href = '?page=home';
+  }
+</script>

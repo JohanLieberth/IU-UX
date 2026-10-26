@@ -1,0 +1,242 @@
+<div class="container py-4">
+  <!-- Panel Technician Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold mb-0"><i class="fa-solid fa-screwdriver-wrench text-primary me-2"></i>Panel del Técnico - Mis Asignaciones</h3>
+      <p class="text-muted small mb-0">Gestión de diagnósticos, estatus de reparación y bitácora de minutos invertidos.</p>
+    </div>
+    <button class="btn btn-outline-primary fw-bold" onclick="cargarMisAsignaciones()"><i class="fa-solid fa-rotate me-1"></i>Actualizar Asignaciones</button>
+  </div>
+
+  <!-- Tabla Mis Asignaciones -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>OrdenID</th>
+              <th>Cliente</th>
+              <th>Equipo / Modelo</th>
+              <th>No. Serie</th>
+              <th>Falla Reportada</th>
+              <th>Mi Estatus</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyMisAsignaciones">
+            <tr><td colspan="7" class="text-center py-4 text-muted">Cargando tus equipos asignados...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Actualizar Estatus y Diagnóstico -->
+<div class="modal fade" id="modalEstatusTecnico" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square me-2"></i>Actualizar Reparación</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="formEstatusTecnico" onsubmit="guardarEstatusTecnico(event)">
+          <input type="hidden" id="tecDetalleId">
+          <input type="hidden" id="tecServicioId">
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Estatus de Reparación</label>
+              <select id="tecEstatusSelect" class="form-select form-select-lg" required>
+                <option value="Diagnostico">Diagnostico</option>
+                <option value="En Reparacion">En Reparacion</option>
+                <option value="Esperando Refaccion">Esperando Refaccion</option>
+                <option value="Listo para Recoleccion">Listo para Recoleccion (Envía correo auto)</option>
+              </select>
+              <div class="form-text text-success">Al marcar "Listo para Recoleccion" se enviará la notificación por correo al cliente.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Costo Diagnóstico Inicial ($)</label>
+              <input type="number" step="0.01" id="tecCostoDiag" class="form-control form-control-lg" required value="0.00">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Falla Reportada / Observada</label>
+            <input type="text" id="tecFalla" class="form-control" required placeholder="Descripción de la falla reportada">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Diagnóstico Técnico Detallado</label>
+            <textarea id="tecDiagnostico" class="form-control" rows="3" placeholder="Diagnóstico de componentes, mediciones de voltaje..."></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Solución Aplicada / Mantenimiento</label>
+            <textarea id="tecSolucion" class="form-control" rows="3" placeholder="Reemplazo de fuente, reballing, cambio de pantalla..."></textarea>
+          </div>
+
+          <div class="modal-footer px-0 pb-0">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary fw-bold"><i class="fa-solid fa-save me-2"></i>Guardar Avance</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Registrar Actividad / Minutos -->
+<div class="modal fade" id="modalMinutosTecnico" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-stopwatch me-2 text-warning"></i>Registrar Minutos Invertidos</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="formMinutosTecnico" onsubmit="guardarMinutosTecnico(event)">
+          <input type="hidden" id="minServicioId">
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Acción Realizada</label>
+            <input type="text" id="minAccion" class="form-control" required placeholder="Ej. Soldadura de puerto HDMI, limpieza general">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Minutos Invertidos</label>
+            <input type="number" id="minMinutos" class="form-control form-control-lg fw-bold" required min="1" value="30">
+          </div>
+
+          <button type="submit" class="btn btn-success w-100 fw-bold"><i class="fa-solid fa-check me-2"></i>Registrar Bitácora</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var cacheTecAsignaciones = [];
+
+  document.addEventListener('DOMContentLoaded', function() {
+    cargarMisAsignaciones();
+  });
+
+  function cargarMisAsignaciones() {
+    runBackend('getMisAsignacionesTecnico').then(data => {
+      cacheTecAsignaciones = data || [];
+      renderTablaMisAsignaciones(cacheTecAsignaciones);
+    }).catch(err => {
+      console.error('Error al cargar asignaciones técnico:', err);
+    });
+  }
+
+  function renderTablaMisAsignaciones(data) {
+    var tbody = document.getElementById('tbodyMisAsignaciones');
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No tienes dispositivos asignados para reparación en este momento.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data.map(item => {
+      if (!item.IsMine) {
+        // Readonly mode with lock icon for multi-device order items assigned to other technicians
+        return `
+          <tr class="table-light text-muted">
+            <td class="fw-bold">${escapeHtml(item.OrdenID)}</td>
+            <td>${escapeHtml(item.ClienteNombre)}</td>
+            <td><strong>${escapeHtml(item.EquipoTipo)} ${escapeHtml(item.EquipoMarca)} ${escapeHtml(item.EquipoModelo)}</strong></td>
+            <td><code>${escapeHtml(item.NoSerie)}</code></td>
+            <td class="small">${escapeHtml(item.FallaReportada)}</td>
+            <td>${getStatusBadgeHtml(item.EstatusDetalle)}</td>
+            <td class="text-center"><span class="badge bg-secondary"><i class="fa-solid fa-lock me-1"></i>Asignado a ${item.TecnicoAsignadoID}</span></td>
+          </tr>
+        `;
+      }
+
+      return `
+        <tr>
+          <td class="fw-bold">${escapeHtml(item.OrdenID)}</td>
+          <td>
+            <div class="fw-bold">${escapeHtml(item.ClienteNombre)}</div>
+            ${getClientTypeBadgeHtml(item.TipoCliente)}
+          </td>
+          <td>
+            <strong>${escapeHtml(item.EquipoTipo)} ${escapeHtml(item.EquipoMarca)} ${escapeHtml(item.EquipoModelo)}</strong>
+          </td>
+          <td><code class="text-dark">${escapeHtml(item.NoSerie || 'N/A')}</code></td>
+          <td class="small">${escapeHtml(item.FallaReportada)}</td>
+          <td>${getStatusBadgeHtml(item.EstatusDetalle)}</td>
+          <td class="text-center">
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-primary fw-bold" onclick="abrirModalEstatusTec('${item.DetalleID}')"><i class="fa-solid fa-pen-to-square me-1"></i>Actualizar</button>
+              <button class="btn btn-outline-dark fw-bold" onclick="abrirModalMinutosTec('${item.ServicioID}')"><i class="fa-solid fa-stopwatch me-1"></i>Minutos</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function abrirModalEstatusTec(detalleId) {
+    var item = cacheTecAsignaciones.find(a => a.DetalleID === detalleId);
+    if (!item) return;
+
+    document.getElementById('tecDetalleId').value = item.DetalleID;
+    document.getElementById('tecServicioId').value = item.ServicioID;
+    document.getElementById('tecEstatusSelect').value = item.EstatusDetalle || 'Diagnostico';
+    document.getElementById('tecCostoDiag').value = item.CostoDiagnostico || 0;
+    document.getElementById('tecFalla').value = item.FallaReportada || '';
+    document.getElementById('tecDiagnostico').value = item.Diagnostico || '';
+    document.getElementById('tecSolucion').value = item.Solucion || '';
+
+    var modal = new bootstrap.Modal(document.getElementById('modalEstatusTecnico'));
+    modal.show();
+  }
+
+  function guardarEstatusTecnico(e) {
+    e.preventDefault();
+    var detId = document.getElementById('tecDetalleId').value;
+    var srvId = document.getElementById('tecServicioId').value;
+    var st = document.getElementById('tecEstatusSelect').value;
+    var cDiag = parseFloat(document.getElementById('tecCostoDiag').value) || 0;
+    var falla = document.getElementById('tecFalla').value.trim();
+    var diagText = document.getElementById('tecDiagnostico').value.trim();
+    var solText = document.getElementById('tecSolucion').value.trim();
+
+    // 1. Update diagnostic cost & fault text
+    runBackend('actualizarDiagnosticoTecnico', srvId, cDiag, falla, diagText).then(() => {
+      // 2. Update status and solution
+      return runBackend('actualizarEstatusDetalle', detId, st, {
+        solucion: solText
+      });
+    }).then(res => {
+      bootstrap.Modal.getInstance(document.getElementById('modalEstatusTecnico')).hide();
+      showToast('¡Estatus y avances guardados exitosamente!', 'success');
+      cargarMisAsignaciones();
+    }).catch(err => {});
+  }
+
+  function abrirModalMinutosTec(servicioId) {
+    document.getElementById('minServicioId').value = servicioId;
+    document.getElementById('minAccion').value = '';
+    document.getElementById('minMinutos').value = 30;
+
+    var modal = new bootstrap.Modal(document.getElementById('modalMinutosTecnico'));
+    modal.show();
+  }
+
+  function guardarMinutosTecnico(e) {
+    e.preventDefault();
+    var srvId = document.getElementById('minServicioId').value;
+    var acc = document.getElementById('minAccion').value.trim();
+    var min = parseInt(document.getElementById('minMinutos').value) || 0;
+
+    runBackend('registrarActividadTecnico', srvId, acc, min).then(res => {
+      bootstrap.Modal.getInstance(document.getElementById('modalMinutosTecnico')).hide();
+      showToast('Bitácora de ' + min + ' minutos registrada.', 'success');
+    });
+  }
+</script>

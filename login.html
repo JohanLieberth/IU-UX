@@ -1,0 +1,85 @@
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="card border-0 shadow-lg">
+        <div class="card-header bg-dark text-white text-center py-3">
+          <h4 class="mb-0 fw-bold"><i class="fa-solid fa-right-to-bracket me-2 text-warning"></i>Acceso a BitFix</h4>
+        </div>
+        <div class="card-body p-4">
+          <!-- Nav Tabs -->
+          <ul class="nav nav-pills nav-justified mb-4" id="loginTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active fw-bold" id="tab-cliente-tab" data-bs-toggle="pill" data-bs-target="#tab-cliente" type="button" role="tab">
+                <i class="fa-solid fa-user me-1"></i>Cliente
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link fw-bold" id="tab-staff-tab" data-bs-toggle="pill" data-bs-target="#tab-staff" type="button" role="tab">
+                <i class="fa-solid fa-shield-halved me-1"></i>Personal / Taller
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content" id="loginTabsContent">
+            <!-- Tab Cliente -->
+            <div class="tab-pane fade show active" id="tab-cliente" role="tabpanel">
+              <form id="formLoginCliente" onsubmit="handleLoginCliente(event)">
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Teléfono (10 dígitos)</label>
+                  <input type="tel" id="loginTel" class="form-control form-control-lg" required placeholder="9991000001" pattern="[0-9]{10}">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label fw-bold">Contraseña</label>
+                  <input type="password" id="loginPass" class="form-control form-control-lg" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold mt-2">
+                  <i class="fa-solid fa-key me-2"></i>Iniciar Sesión
+                </button>
+              </form>
+              <hr class="my-4">
+              <div class="text-center">
+                <p class="mb-0 text-muted">¿No tienes cuenta aún?</p>
+                <a href="?page=portal_registro" class="btn btn-outline-secondary btn-sm fw-bold mt-2">
+                  <i class="fa-solid fa-user-plus me-1"></i>Registrarme como Cliente
+                </a>
+              </div>
+            </div>
+
+            <!-- Tab Staff / Admin / Tecnico -->
+            <div class="tab-pane fade" id="tab-staff" role="tabpanel">
+              <div class="alert alert-info border-0 shadow-sm mb-3">
+                <i class="fa-solid fa-circle-info me-2"></i>El acceso de Administradores y Técnicos utiliza su sesión activa de Google. Su correo debe estar previamente registrado en la tabla <strong>Admins</strong>.
+              </div>
+              <div class="d-grid gap-2">
+                <a href="?page=admin" class="btn btn-dark btn-lg fw-bold">
+                  <i class="fa-solid fa-gauge me-2 text-warning"></i>Acceder a Panel Admin
+                </a>
+                <a href="?page=tecnico" class="btn btn-secondary btn-lg fw-bold">
+                  <i class="fa-solid fa-screwdriver-wrench me-2 text-warning"></i>Acceder a Panel Técnico
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function handleLoginCliente(e) {
+    e.preventDefault();
+    var tel = document.getElementById('loginTel').value.trim();
+    var pass = document.getElementById('loginPass').value;
+
+    runBackend('loginCliente', tel, pass).then(res => {
+      localStorage.setItem('BITFIX_PORTAL_TOKEN', res.token);
+      showToast('¡Bienvenido ' + res.session.nombre + '!', 'success');
+      setTimeout(() => {
+        window.location.href = '?page=portal';
+      }, 1000);
+    }).catch(err => {
+      // Toast already shown
+    });
+  }
+</script>

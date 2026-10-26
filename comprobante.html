@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Comprobante Ticket - BitFix</title>
+  <style>
+    @page {
+      size: 58mm auto;
+      margin: 2mm;
+    }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 10px;
+      line-height: 1.2;
+      width: 54mm;
+      margin: 0 auto;
+      padding: 0;
+      color: #000000;
+    }
+    .ticket {
+      page-break-after: always;
+      padding-bottom: 10px;
+    }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .bold { font-weight: bold; }
+    .divider { border-bottom: 1px dashed #000; margin: 4px 0; }
+    .double-divider { border-bottom: 2px dashed #000; margin: 4px 0; }
+    .row-flex { display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body onload="window.print()">
+
+  <? if (data && data.Items && data.Items.length > 0) { ?>
+    <? data.Items.forEach(function(item) { ?>
+      <div class="ticket">
+        <div class="divider"></div>
+        <div class="text-center bold" style="font-size: 12px;">BitFix Reparaciones</div>
+        <div class="text-center small"><?= data.DireccionTaller ?></div>
+        <div class="double-divider"></div>
+
+        <div class="row-flex"><span>Orden: <?= data.OrdenID ?></span> <span>Fecha: <?= data.FechaHora ?></span></div>
+        <div>Folio Servicio: <strong><?= item.ServicioID ?></strong></div>
+        <div>Cliente: <?= data.ClienteNombre ?></div>
+        <div>Tel: <?= data.ClienteTelefono ?></div>
+        <div class="divider"></div>
+
+        <div><strong>Equipo:</strong> <?= item.Equipo ?></div>
+        <div><strong>No. Serie:</strong> <?= item.NoSerie ?></div>
+        <div><strong>Falla:</strong> <?= item.FallaReportada ?></div>
+        <div><strong>Diagnóstico:</strong> <?= item.Diagnostico ?></div>
+        <div><strong>Solución:</strong> <?= item.Solucion ?></div>
+        <div><strong>Garantía:</strong> <?= item.GarantiaDias ?> días</div>
+        <div class="divider"></div>
+
+        <div class="row-flex"><span>Costo diagnóstico:</span> <span>$<?= Number(item.CostoDiagnostico).toFixed(2) ?></span></div>
+        <div class="row-flex"><span>Costo final:</span> <span>$<?= Number(item.CostoFinal).toFixed(2) ?></span></div>
+        <div class="row-flex"><span>Estatus:</span> <span><?= item.Estatus ?></span></div>
+        <div class="row-flex"><span>Técnico:</span> <span><?= item.TecnicoID ?></span></div>
+        <div class="divider"></div>
+
+        <div class="row-flex bold"><span>Total orden:</span> <span>$<?= Number(data.TotalOrden).toFixed(2) ?></span></div>
+        <div class="row-flex"><span>Pagado:</span> <span>$<?= Number(data.TotalPagado).toFixed(2) ?></span></div>
+        <div class="row-flex bold"><span>Saldo:</span> <span>$<?= Number(data.Saldo).toFixed(2) ?></span></div>
+        <div class="double-divider"></div>
+
+        <div class="text-center bold">¡Gracias por su preferencia!</div>
+        <div class="text-center">Portal: <?= data.URLPortal ?></div>
+        <div class="divider"></div>
+      </div>
+    <? }); ?>
+  <? } else { ?>
+    <div class="text-center py-4">No se encontraron datos para imprimir.</div>
+  <? } ?>
+
+</body>
+</html>

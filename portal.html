@@ -1,0 +1,253 @@
+<div class="container py-4">
+  <!-- Portal Unauthenticated Notice -->
+  <div id="portalAuthNotice" class="card shadow-sm border-0 text-center py-5" style="display: none;">
+    <div class="card-body">
+      <i class="fa-solid fa-lock fa-3x text-warning mb-3"></i>
+      <h3 class="fw-bold">Acceso Requerido</h3>
+      <p class="text-muted">Inicia sesión con tu teléfono y contraseña para acceder a tu portal de cliente.</p>
+      <a href="?page=login" class="btn btn-primary btn-lg fw-bold"><i class="fa-solid fa-right-to-bracket me-2"></i>Iniciar Sesión</a>
+      <a href="?page=portal_registro" class="btn btn-outline-secondary btn-lg fw-bold ms-2"><i class="fa-solid fa-user-plus me-2"></i>Registrarme</a>
+    </div>
+  </div>
+
+  <!-- Portal Dashboard Content -->
+  <div id="portalDashboard" style="display: none;">
+    <!-- Profile & Summary Header -->
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <div class="card border-0 shadow-sm bg-white p-3">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0 bg-primary text-white rounded-circle p-3 me-3">
+              <i class="fa-solid fa-user fa-2x"></i>
+            </div>
+            <div>
+              <h4 class="fw-bold mb-1" id="cliNombre">Cargando...</h4>
+              <p class="mb-0 text-muted small"><i class="fa-solid fa-phone me-1"></i><span id="cliTel">--</span> | <i class="fa-solid fa-envelope me-1"></i><span id="cliCorreo">--</span> | <span id="cliBadgeTipo"></span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4 mt-3 mt-md-0">
+        <div class="card border-0 shadow-sm bg-warning bg-opacity-10 border-start border-warning border-4 p-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <span class="text-muted small fw-bold">SALDO DE PUNTOS</span>
+              <h2 class="fw-bold text-dark mb-0"><span id="cliSaldoPuntos">0</span> <small class="fs-6 text-muted">pts</small></h2>
+            </div>
+            <i class="fa-solid fa-star fa-3x text-warning opacity-75"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-tabs nav-fill mb-4" id="portalTabs" role="tablist">
+      <li class="nav-item">
+        <button class="nav-link active fw-bold" id="tab-equipos-tab" data-bs-toggle="tab" data-bs-target="#tab-equipos" type="button" role="tab">
+          <i class="fa-solid fa-gamepad me-2"></i>Mis Equipos en Servicio
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-bold" id="tab-puntos-tab" data-bs-toggle="tab" data-bs-target="#tab-puntos" type="button" role="tab">
+          <i class="fa-solid fa-star me-2"></i>Historial de Puntos
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-bold" id="tab-nfc-tab" data-bs-toggle="tab" data-bs-target="#tab-nfc" type="button" role="tab">
+          <i class="fa-solid fa-nfc-symbol me-2"></i>Mi Tarjeta NFC
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link fw-bold" id="tab-pagos-tab" data-bs-toggle="tab" data-bs-target="#tab-pagos" type="button" role="tab">
+          <i class="fa-solid fa-receipt me-2"></i>Pagos Realizados
+        </button>
+      </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="portalTabsContent">
+      <!-- Equipos en Servicio Tab -->
+      <div class="tab-pane fade show active" id="tab-equipos" role="tabpanel">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Orden</th>
+                    <th>Dispositivo</th>
+                    <th>No. Serie</th>
+                    <th>Estatus</th>
+                    <th>Diagnóstico</th>
+                    <th>Solución</th>
+                    <th>Liberación</th>
+                    <th class="text-end">Costo Final</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyMisEquipos">
+                  <tr><td colspan="8" class="text-center text-muted py-4">Cargando equipos...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Puntos Tab -->
+      <div class="tab-pane fade" id="tab-puntos" role="tabpanel">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Concepto</th>
+                    <th class="text-center">Puntos</th>
+                    <th class="text-end">Saldo Acumulado</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyMisPuntos">
+                  <tr><td colspan="4" class="text-center text-muted py-4">Cargando movimientos de puntos...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NFC Tab -->
+      <div class="tab-pane fade" id="tab-nfc" role="tabpanel">
+        <div class="card border-0 shadow-sm p-4">
+          <h5 class="fw-bold mb-3"><i class="fa-solid fa-id-card text-primary me-2"></i>Tarjetas NFC Vinculadas</h5>
+          <div id="containerNFC">
+            <!-- NFC content -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagos Tab -->
+      <div class="tab-pane fade" id="tab-pagos" role="tabpanel">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Pago ID</th>
+                    <th>Orden ID</th>
+                    <th>Fecha</th>
+                    <th>Concepto</th>
+                    <th class="text-end">Importe</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyMisPagos">
+                  <tr><td colspan="5" class="text-center text-muted py-4">Cargando pagos...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    initPortalDashboard();
+  });
+
+  function initPortalDashboard() {
+    var token = localStorage.getItem('BITFIX_PORTAL_TOKEN');
+    if (!token) {
+      document.getElementById('portalAuthNotice').style.display = 'block';
+      return;
+    }
+
+    runBackend('getPortalDashboard', token).then(data => {
+      document.getElementById('portalDashboard').style.display = 'block';
+
+      // Header
+      document.getElementById('cliNombre').innerText = data.Cliente.Nombre;
+      document.getElementById('cliTel').innerText = data.Cliente.Telefono;
+      document.getElementById('cliCorreo').innerText = data.Cliente.Correo || 'Sin correo registrado';
+      document.getElementById('cliBadgeTipo').innerHTML = getClientTypeBadgeHtml(data.Cliente.TipoCliente);
+      document.getElementById('cliSaldoPuntos').innerText = data.SaldoPuntos;
+
+      // Update Nav
+      var navInfo = document.getElementById('navUserInfo');
+      if (navInfo) {
+        navInfo.innerHTML = `<i class="fa-solid fa-user me-1"></i>${escapeHtml(data.Cliente.Nombre)} <button class="btn btn-link btn-sm text-danger text-decoration-none p-0 ms-2" onclick="logoutPortal()">(Salir)</button>`;
+      }
+
+      // 1. Equipos Table
+      var tbEq = document.getElementById('tbodyMisEquipos');
+      if (data.MisEquipos && data.MisEquipos.length > 0) {
+        tbEq.innerHTML = data.MisEquipos.map(e => `
+          <tr>
+            <td class="fw-bold">${escapeHtml(e.OrdenID)}</td>
+            <td><strong>${escapeHtml(e.Equipo)}</strong> <div class="small text-muted">${escapeHtml(e.Tipo)}</div></td>
+            <td><code class="text-dark">${escapeHtml(e.NoSerie)}</code></td>
+            <td>${getStatusBadgeHtml(e.Estatus)}</td>
+            <td class="small text-muted">${escapeHtml(e.Diagnostico)}</td>
+            <td class="small text-muted">${escapeHtml(e.Solucion)}</td>
+            <td class="small">${escapeHtml(e.FechaLiberacion || 'En taller')}</td>
+            <td class="text-end fw-bold text-success">${escapeHtml(e.CostoFinal)}</td>
+          </tr>
+        `).join('');
+      } else {
+        tbEq.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No tienes equipos en servicio actualmente.</td></tr>';
+      }
+
+      // 2. Puntos Table
+      var tbPts = document.getElementById('tbodyMisPuntos');
+      if (data.MovimientosPuntos && data.MovimientosPuntos.length > 0) {
+        tbPts.innerHTML = data.MovimientosPuntos.map(m => `
+          <tr>
+            <td>${escapeHtml(m.Fecha)}</td>
+            <td>${escapeHtml(m.Concepto)}</td>
+            <td class="text-center fw-bold ${m.Puntos >= 0 ? 'text-success' : 'text-danger'}">${m.Puntos >= 0 ? '+' : ''}${m.Puntos} pts</td>
+            <td class="text-end fw-bold">${m.SaldoAcumulado} pts</td>
+          </tr>
+        `).join('');
+      } else {
+        tbPts.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay historial de puntos registrado.</td></tr>';
+      }
+
+      // 3. NFC Container
+      var nfcBox = document.getElementById('containerNFC');
+      if (data.NFC_UIDs && data.NFC_UIDs.length > 0) {
+        nfcBox.innerHTML = `
+          <div class="alert alert-success border-0 shadow-sm">
+            <h6><i class="fa-solid fa-circle-check me-2"></i>Tarjetas NFC vinculadas activas:</h6>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              ${data.NFC_UIDs.map(uid => `<span class="badge bg-dark fs-6 font-monospace p-2"><i class="fa-solid fa-wifi me-1 text-warning"></i>${escapeHtml(uid)}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      } else {
+        nfcBox.innerHTML = '<div class="alert alert-light border text-muted">No cuentas con tarjetas NFC vinculadas a tu cuenta. Solicita una en recepción de BitFix.</div>';
+      }
+
+      // 4. Pagos Table
+      var tbPag = document.getElementById('tbodyMisPagos');
+      if (data.Pagos && data.Pagos.length > 0) {
+        tbPag.innerHTML = data.Pagos.map(p => `
+          <tr>
+            <td class="fw-bold">${escapeHtml(p.PagoID)}</td>
+            <td>${escapeHtml(p.OrdenID)}</td>
+            <td>${escapeHtml(p.Fecha)}</td>
+            <td>${escapeHtml(p.Concepto)}</td>
+            <td class="text-end fw-bold text-success">${formatCurrency(p.Importe)}</td>
+          </tr>
+        `).join('');
+      } else {
+        tbPag.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No hay pagos registrados.</td></tr>';
+      }
+
+    }).catch(err => {
+      document.getElementById('portalAuthNotice').style.display = 'block';
+    });
+  }
+</script>
