@@ -1,0 +1,84 @@
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-7 col-lg-6">
+      <div class="card border-0 shadow-lg">
+        <div class="card-header bg-primary text-white text-center py-3">
+          <h4 class="mb-0 fw-bold"><i class="fa-solid fa-user-plus me-2"></i>Registro de Cliente</h4>
+        </div>
+        <div class="card-body p-4">
+          <form id="formRegistroCliente" onsubmit="handleRegistroCliente(event)">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Teléfono Celular (10 dígitos)</label>
+              <input type="tel" id="regTel" class="form-control form-control-lg" required placeholder="9991000001" pattern="[0-9]{10}">
+              <div class="form-text">Servirá como tu identificador de usuario para consultar tus mantenimientos y reparar tu equipo.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Nombre Completo</label>
+              <input type="text" id="regNombre" class="form-control" required placeholder="Ej. Juan Pérez">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Correo Electrónico</label>
+              <input type="email" id="regCorreo" class="form-control" required placeholder="correo@ejemplo.com">
+              <div class="form-text">Recibirás avisos de estatus y entregas de tus equipos.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Contraseña</label>
+              <input type="password" id="regPass" class="form-control" required minlength="6" placeholder="Mínimo 6 caracteres">
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-bold">Confirmar Contraseña</label>
+              <input type="password" id="regPass2" class="form-control" required minlength="6" placeholder="Repite tu contraseña">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold mt-3">
+              <i class="fa-solid fa-check-circle me-2"></i>Crear Cuenta
+            </button>
+          </form>
+
+          <hr class="my-4">
+          <div class="text-center">
+            <span class="text-muted">¿Ya tienes una cuenta registrada?</span>
+            <a href="?page=login" class="btn btn-link fw-bold text-decoration-none ms-1">Iniciar Sesión</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function handleRegistroCliente(e) {
+    e.preventDefault();
+    var tel = document.getElementById('regTel').value.trim();
+    var nombre = document.getElementById('regNombre').value.trim();
+    var correo = document.getElementById('regCorreo').value.trim();
+    var pass = document.getElementById('regPass').value;
+    var pass2 = document.getElementById('regPass2').value;
+
+    if (pass !== pass2) {
+      showToast('Las contraseñas no coinciden.', 'warning');
+      return;
+    }
+
+    var payload = {
+      telefono: tel,
+      nombre: nombre,
+      correo: correo,
+      password: pass
+    };
+
+    runBackend('registrarClientePortal', payload).then(res => {
+      localStorage.setItem('BITFIX_PORTAL_TOKEN', res.token);
+      showToast('¡Registro completado exitosamente! Bienvenido ' + res.session.nombre, 'success');
+      setTimeout(() => {
+        window.location.href = '?page=portal';
+      }, 1200);
+    }).catch(err => {
+      // Toast already shown
+    });
+  }
+</script>

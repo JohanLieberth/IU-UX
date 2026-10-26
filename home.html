@@ -1,0 +1,156 @@
+<div class="container py-4">
+  <!-- Hero Banner -->
+  <div class="p-5 mb-4 bg-dark text-white rounded-3 shadow text-center position-relative overflow-hidden">
+    <div class="row align-items-center position-relative" style="z-index: 2;">
+      <div class="col-lg-8 mx-auto">
+        <h1 class="display-4 fw-bold"><i class="fa-solid fa-gamepad text-warning me-2"></i>BitFix v3</h1>
+        <p class="fs-5 text-light">Especialistas en reparación de consolas de videojuegos, laptops y equipos electrónicos.</p>
+
+        <!-- Video Bienvenida o Placeholder -->
+        <div class="my-4 rounded overflow-hidden shadow-sm" style="max-width: 640px; margin: 0 auto; background: #000;">
+          <video id="heroVideo" class="w-100" autoplay muted loop style="display: none; max-height: 320px; object-fit: cover;">
+            <source id="heroVideoSource" src="" type="video/mp4">
+            Su navegador no soporta video.
+          </video>
+          <div id="heroVideoPlaceholder" class="p-4 bg-secondary text-white">
+            <i class="fa-solid fa-screwdriver-wrench fa-3x mb-2 text-warning"></i>
+            <h5>¡Tu equipo en manos de expertos!</h5>
+            <p class="small mb-0">Consulta en tiempo real el estado de tu servicio de reparación.</p>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-center gap-3">
+          <a href="?page=portal" class="btn btn-warning btn-lg fw-bold"><i class="fa-solid fa-user me-2"></i>Portal Cliente</a>
+          <a href="?page=login" class="btn btn-outline-light btn-lg"><i class="fa-solid fa-lock me-2"></i>Acceso Taller</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Buscador de Consulta Rápida -->
+  <div class="row mb-5">
+    <div class="col-md-8 mx-auto">
+      <div class="card shadow-sm border-0">
+        <div class="card-body p-4 text-center">
+          <h4 class="card-title fw-bold mb-3"><i class="fa-solid fa-magnifying-glass me-2 text-primary"></i>Consulta Rápida de Servicio</h4>
+          <p class="text-muted">Ingresa tu número de servicio (ej. <strong>SRV001</strong>) para conocer el estatus actual de tu equipo.</p>
+
+          <div class="input-group input-group-lg mb-2">
+            <input type="text" id="inputServicioId" class="form-control" placeholder="Ej. SRV001, SRV002..." aria-label="ID Servicio">
+            <button class="btn btn-primary fw-bold" type="button" onclick="consultarRapido()"><i class="fa-solid fa-search me-2"></i>Consultar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección Tabla de Puntos -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3">
+      <h5 class="mb-0 fw-bold text-purple"><i class="fa-solid fa-star text-warning me-2"></i>Gana puntos por cada reparación</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Acción</th>
+              <th class="text-end">Puntos Otorgados</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyTablaPuntos">
+            <tr><td colspan="2" class="text-center text-muted py-3">Cargando reglas de puntos...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Resultado Consulta Rápida -->
+<div class="modal fade" id="modalConsultaRapida" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-circle-info me-2 text-warning"></i>Estatus de Servicio</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4" id="bodyConsultaRapida">
+        <!-- Content dynamic -->
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    loadPublicConfig();
+  });
+
+  function loadPublicConfig() {
+    runBackend('getPublicConfig').then(cfg => {
+      // Video check
+      if (cfg.VideoBienvenida) {
+        var videoEl = document.getElementById('heroVideo');
+        var srcEl = document.getElementById('heroVideoSource');
+        var phEl = document.getElementById('heroVideoPlaceholder');
+        srcEl.src = cfg.VideoBienvenida;
+        videoEl.load();
+        videoEl.style.display = 'block';
+        phEl.style.display = 'none';
+      }
+
+      // Render points table
+      var tbody = document.getElementById('tbodyTablaPuntos');
+      if (cfg.TablaPuntos && cfg.TablaPuntos.length > 0) {
+        tbody.innerHTML = cfg.TablaPuntos.map(p => `
+          <tr>
+            <td class="fw-medium">${escapeHtml(p.Accion)}</td>
+            <td class="text-end fw-bold text-success">+${escapeHtml(p.Puntos)} pts</td>
+          </tr>
+        `).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted">No hay reglas de puntos configuradas.</td></tr>';
+      }
+    }).catch(err => {
+      console.warn('Error loading public config:', err);
+    });
+  }
+
+  function consultarRapido() {
+    var srvId = document.getElementById('inputServicioId').value.trim();
+    if (!srvId) {
+      showToast('Por favor ingrese un ID de servicio (ej. SRV001).', 'warning');
+      return;
+    }
+
+    runBackend('consultarServicioRapido', srvId).then(res => {
+      var body = document.getElementById('bodyConsultaRapida');
+      body.innerHTML = `
+        <div class="text-center mb-3">
+          <span class="fs-4 fw-bold text-primary">${escapeHtml(res.ServicioID)}</span>
+          <div class="mt-1">${getStatusBadgeHtml(res.EstatusActual)}</div>
+        </div>
+        <hr>
+        <ul class="list-group list-group-flush small">
+          <li class="list-group-item d-flex justify-content-between"><strong>Orden:</strong> <span>${escapeHtml(res.OrdenID)}</span></li>
+          <li class="list-group-item d-flex justify-content-between"><strong>Cliente:</strong> <span>${escapeHtml(res.ClienteNombre)}</span></li>
+          <li class="list-group-item d-flex justify-content-between"><strong>Equipo:</strong> <span>${escapeHtml(res.EquipoTipo)} ${escapeHtml(res.EquipoMarca)} ${escapeHtml(res.EquipoModelo)}</span></li>
+          <li class="list-group-item d-flex justify-content-between"><strong>No. Serie:</strong> <span>${escapeHtml(res.NoSerie || 'N/A')}</span></li>
+          <li class="list-group-item"><strong>Diagnóstico:</strong> <div class="text-muted mt-1">${escapeHtml(res.Diagnostico)}</div></li>
+          <li class="list-group-item"><strong>Solución:</strong> <div class="text-muted mt-1">${escapeHtml(res.Solucion)}</div></li>
+          <li class="list-group-item d-flex justify-content-between"><strong>Técnico(s):</strong> <span>${escapeHtml(res.TecnicosAsignados)}</span></li>
+          <li class="list-group-item d-flex justify-content-between"><strong>Costo Final:</strong> <span class="fw-bold text-success">${escapeHtml(res.CostoFinal)}</span></li>
+          ${res.FechaEntregado ? `<li class="list-group-item d-flex justify-content-between"><strong>Fecha Liberación:</strong> <span>${escapeHtml(res.FechaEntregado)}</span></li>` : ''}
+        </ul>
+      `;
+      var modal = new bootstrap.Modal(document.getElementById('modalConsultaRapida'));
+      modal.show();
+    }).catch(err => {
+      // Toast already shown by runBackend
+    });
+  }
+</script>

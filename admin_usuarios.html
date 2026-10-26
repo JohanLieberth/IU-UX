@@ -1,0 +1,219 @@
+<div class="row g-0">
+  <!-- Sidebar -->
+  <div class="col-md-3 col-lg-2 sidebar p-0 no-print">
+    <div class="p-3 bg-dark text-white text-center border-bottom border-secondary">
+      <h5 class="mb-0 fw-bold"><i class="fa-solid fa-gauge text-warning me-2"></i>Panel BitFix</h5>
+    </div>
+    <div class="nav flex-column py-2">
+      <a href="?page=admin"><i class="fa-solid fa-list-check me-2"></i>Órdenes de Servicio</a>
+      <a href="?page=admin_usuarios" class="active"><i class="fa-solid fa-users me-2"></i>Usuarios, NFC y Puntos</a>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="col-md-9 col-lg-10 p-4">
+    <h3 class="fw-bold mb-1">Gestión de Usuarios, Tarjetas NFC y Puntos</h3>
+    <p class="text-muted small mb-4">Consulta clientes por teléfono, vinculación de fichas NFC USB y ajuste manual de puntos.</p>
+
+    <!-- Buscador de Usuario -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <h5 class="fw-bold mb-3"><i class="fa-solid fa-search text-primary me-2"></i>Buscar Cliente por Teléfono o Nombre</h5>
+        <div class="input-group input-group-lg">
+          <input type="text" id="inputBuscarUser" class="form-control" placeholder="Ingrese teléfono de 10 dígitos o nombre..." onkeypress="if(event.key==='Enter') ejecutarBuscarUsuario()">
+          <button class="btn btn-primary fw-bold" type="button" onclick="ejecutarBuscarUsuario()"><i class="fa-solid fa-search me-1"></i>Buscar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resultados del Usuario -->
+    <div id="userResultContainer" style="display: none;">
+      <div class="row g-4">
+        <!-- Tarjeta de Datos del Cliente -->
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-dark text-white fw-bold py-3">
+              <i class="fa-solid fa-id-card me-2 text-warning"></i>Datos del Cliente
+            </div>
+            <div class="card-body p-4">
+              <h4 id="uNom" class="fw-bold mb-1">--</h4>
+              <p id="uTel" class="text-muted fw-bold mb-2">--</p>
+              <div id="uBadgeType" class="mb-3"></div>
+
+              <ul class="list-group list-group-flush small">
+                <li class="list-group-item d-flex justify-content-between"><span>Correo:</span> <strong id="uCorreo">--</strong></li>
+                <li class="list-group-item d-flex justify-content-between"><span>Órdenes Registradas:</span> <strong id="uOrdsCount">0</strong></li>
+                <li class="list-group-item d-flex justify-content-between"><span>Equipos en Taller:</span> <strong id="uEqsCount">0</strong></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjeta Gestor NFC -->
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-primary text-white fw-bold py-3">
+              <i class="fa-solid fa-wifi me-2"></i>Gestión de Tarjeta NFC
+            </div>
+            <div class="card-body p-4">
+              <div class="mb-3">
+                <label class="form-label fw-bold">UID Tarjeta NFC (Lectura USB)</label>
+                <div class="input-group">
+                  <input type="text" id="inputNfcUid" class="form-control font-monospace" placeholder="Ej. A1B2C3D4">
+                  <button class="btn btn-primary fw-bold" onclick="vincularNFC(false)"><i class="fa-solid fa-link me-1"></i>Vincular</button>
+                </div>
+                <div class="form-text">Pase el tag NFC por el lector o ingrese el UID manualmente.</div>
+              </div>
+
+              <h6 class="fw-bold mt-4 mb-2">UIDs Vincular a este teléfono:</h6>
+              <div id="listNfcUids">
+                <!-- Badges NFC -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tarjeta Gestor Puntos -->
+        <div class="col-md-12">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-warning bg-opacity-25 fw-bold py-3 text-dark d-flex justify-content-between align-items-center">
+              <span><i class="fa-solid fa-star text-warning me-2"></i>Gestión y Saldo de Puntos</span>
+              <span class="fs-5 text-success fw-bold">Saldo: <span id="uSaldoPts">0</span> pts</span>
+            </div>
+            <div class="card-body p-4">
+              <div class="d-flex gap-2 mb-3">
+                <button class="btn btn-success fw-bold" onclick="abrirModalPuntos(10, 'Ajuste Manual / Bonificación')"><i class="fa-solid fa-plus me-1"></i>Agregar Puntos</button>
+                <button class="btn btn-outline-danger fw-bold" onclick="abrirModalPuntos(-10, 'Canje de Puntos en Recepción')"><i class="fa-solid fa-minus me-1"></i>Canjear Puntos</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ajuste de Puntos -->
+<div class="modal fade" id="modalPuntosUser" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-warning text-dark fw-bold">
+        <h5 class="modal-title fw-bold"><i class="fa-solid fa-star me-2"></i>Registrar Movimiento de Puntos</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Cantidad de Puntos (+/-)</label>
+          <input type="number" id="ptsCantidad" class="form-control form-control-lg fw-bold" value="10">
+          <div class="form-text">Use números positivos para sumar y negativos para restar/canjear.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Concepto</label>
+          <input type="text" id="ptsConcepto" class="form-control" placeholder="Ej. Canje por descuento en mano de obra">
+        </div>
+        <button type="button" class="btn btn-dark w-100 fw-bold" onclick="confirmarPuntosManual()"><i class="fa-solid fa-save me-2"></i>Guardar Movimiento</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  var currentUserTel = null;
+
+  function ejecutarBuscarUsuario() {
+    var q = document.getElementById('inputBuscarUser').value.trim();
+    if (!q) {
+      showToast('Ingrese un teléfono o nombre para buscar.', 'warning');
+      return;
+    }
+
+    runBackend('buscarUsuarioAdmin', q).then(users => {
+      if (!users || users.length === 0) {
+        showToast('No se encontraron clientes con esa búsqueda.', 'info');
+        document.getElementById('userResultContainer').style.display = 'none';
+        return;
+      }
+
+      var u = users[0];
+      currentUserTel = u.Telefono;
+
+      document.getElementById('userResultContainer').style.display = 'block';
+      document.getElementById('uNom').innerText = u.Nombre;
+      document.getElementById('uTel').innerText = u.Telefono;
+      document.getElementById('uCorreo').innerText = u.Correo || 'Sin correo registrado';
+      document.getElementById('uBadgeType').innerHTML = getClientTypeBadgeHtml(u.TipoCliente);
+      document.getElementById('uOrdsCount').innerText = u.OrdenesCount;
+      document.getElementById('uEqsCount').innerText = u.EquiposCount;
+      document.getElementById('uSaldoPts').innerText = u.SaldoPuntos;
+
+      renderListNFC(u.NFC_UIDs || []);
+    });
+  }
+
+  function renderListNFC(uids) {
+    var cont = document.getElementById('listNfcUids');
+    if (!uids || uids.length === 0) {
+      cont.innerHTML = '<span class="text-muted small">Sin tarjetas vinculadas.</span>';
+      return;
+    }
+
+    cont.innerHTML = uids.map(uid => `
+      <div class="d-inline-flex align-items-center bg-dark text-white rounded p-2 me-2 mb-2">
+        <i class="fa-solid fa-wifi text-warning me-2"></i>
+        <span class="font-monospace fw-bold me-2">${escapeHtml(uid)}</span>
+        <button class="btn btn-danger btn-sm py-0 px-1" onclick="desvincularNFC('${uid}')" title="Desvincular"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    `).join('');
+  }
+
+  function vincularNFC(reasignar) {
+    var uid = document.getElementById('inputNfcUid').value.trim();
+    if (!uid) {
+      showToast('Ingrese el UID de la tarjeta NFC.', 'warning');
+      return;
+    }
+    if (!currentUserTel) {
+      showToast('Primero busque y seleccione un cliente.', 'warning');
+      return;
+    }
+
+    runBackend('vincularTokenNFC', uid, currentUserTel, reasignar).then(res => {
+      if (res.requiereConfirmacion) {
+        if (confirm(res.mensaje)) {
+          vincularNFC(true);
+        }
+      } else {
+        showToast(res.message, 'success');
+        document.getElementById('inputNfcUid').value = '';
+        ejecutarBuscarUsuario();
+      }
+    });
+  }
+
+  function desvincularNFC(uid) {
+    if (confirm('¿Desvincular la tarjeta NFC ' + uid + '?')) {
+      runBackend('desvincularTokenNFC', uid).then(res => {
+        showToast(res.message, 'warning');
+        ejecutarBuscarUsuario();
+      });
+    }
+  }
+
+  function abrirModalPuntos(cant, conc) {
+    document.getElementById('ptsCantidad').value = cant;
+    document.getElementById('ptsConcepto').value = conc;
+    var modal = new bootstrap.Modal(document.getElementById('modalPuntosUser'));
+    modal.show();
+  }
+
+  function confirmarPuntosManual() {
+    var cant = parseFloat(document.getElementById('ptsCantidad').value);
+    var conc = document.getElementById('ptsConcepto').value;
+
+    runBackend('registrarMovimientoPuntosManual', currentUserTel, cant, conc).then(res => {
+      bootstrap.Modal.getInstance(document.getElementById('modalPuntosUser')).hide();
+      showToast('Movimiento de puntos registrado.', 'success');
+      ejecutarBuscarUsuario();
+    });
+  }
+</script>
